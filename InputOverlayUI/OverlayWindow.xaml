@@ -1,0 +1,28 @@
+<Window x:Class="InputOverlayUI.OverlayWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Input Overlay"
+        WindowStyle="SingleBorderWindow"
+        AllowsTransparency="False"
+        Background="LightGray"
+        Topmost="False"
+        ShowInTaskbar="True"
+        ResizeMode="CanResizeWithGrip"
+        Left="100" Top="100"
+        Width="705" Height="394"
+        MinWidth="100" MinHeight="100">
+
+    <Window.ContextMenu>
+        <ContextMenu>
+            <MenuItem x:Name="NoBorderMenuItem" Header="No Border Mode" IsCheckable="True" Click="NoBorderMenuItem_Click"/>
+        </ContextMenu>
+    </Window.ContextMenu>
+
+    <Viewbox x:Name="OverlayViewbox" Stretch="Uniform">
+        <Border x:Name="OverlayBorder" Background="Transparent">
+            <Canvas x:Name="OverlayCanvas">
+                <!-- Key elements will be dynamically added here -->
+            </Canvas>
+        </Border>
+    </Viewbox>
+</Window>

@@ -1,0 +1,178 @@
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                    xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes">
+
+    <!-- Compact Button Style -->
+    <Style x:Key="CompactButtonStyle" TargetType="Button" BasedOn="{StaticResource MaterialDesignFlatButton}">
+        <Setter Property="Height" Value="28"/>
+        <Setter Property="MinWidth" Value="80"/>
+        <Setter Property="Margin" Value="4,2"/>
+        <Setter Property="Padding" Value="8,4"/>
+        <Setter Property="FontSize" Value="12"/>
+        <Setter Property="materialDesign:ButtonAssist.CornerRadius" Value="4"/>
+    </Style>
+
+    <!-- Compact Icon Button Style with Hover Animation -->
+    <Style x:Key="CompactIconButtonStyle" TargetType="Button" BasedOn="{StaticResource MaterialDesignIconButton}">
+        <Setter Property="Width" Value="24"/>
+        <Setter Property="Height" Value="24"/>
+        <Setter Property="Margin" Value="2,0"/>
+        <Setter Property="Padding" Value="0"/>
+        <Setter Property="FontSize" Value="14"/>
+        <Setter Property="RenderTransform">
+            <Setter.Value>
+                <ScaleTransform ScaleX="1" ScaleY="1"/>
+            </Setter.Value>
+        </Setter>
+        <Setter Property="RenderTransformOrigin" Value="0.5,0.5"/>
+        <Style.Triggers>
+            <Trigger Property="IsMouseOver" Value="True">
+                <Trigger.EnterActions>
+                    <BeginStoryboard>
+                        <Storyboard>
+                            <DoubleAnimation Storyboard.TargetProperty="(UIElement.RenderTransform).(ScaleTransform.ScaleX)"
+                                           To="1.2" Duration="0:0:0.1"/>
+                            <DoubleAnimation Storyboard.TargetProperty="(UIElement.RenderTransform).(ScaleTransform.ScaleY)"
+                                           To="1.2" Duration="0:0:0.1"/>
+                        </Storyboard>
+                    </BeginStoryboard>
+                </Trigger.EnterActions>
+                <Trigger.ExitActions>
+                    <BeginStoryboard>
+                        <Storyboard>
+                            <DoubleAnimation Storyboard.TargetProperty="(UIElement.RenderTransform).(ScaleTransform.ScaleX)"
+                                           To="1" Duration="0:0:0.1"/>
+                            <DoubleAnimation Storyboard.TargetProperty="(UIElement.RenderTransform).(ScaleTransform.ScaleY)"
+                                           To="1" Duration="0:0:0.1"/>
+                        </Storyboard>
+                    </BeginStoryboard>
+                </Trigger.ExitActions>
+            </Trigger>
+        </Style.Triggers>
+    </Style>
+
+    <!-- Compact CheckBox Style -->
+    <Style x:Key="CompactCheckBoxStyle" TargetType="CheckBox" BasedOn="{StaticResource MaterialDesignCheckBox}">
+        <Setter Property="Margin" Value="4,0"/>
+        <Setter Property="FontSize" Value="11"/>
+        <Setter Property="VerticalAlignment" Value="Center"/>
+    </Style>
+
+    <!-- Compact TextBox Style -->
+    <Style x:Key="CompactTextBoxStyle" TargetType="TextBox" BasedOn="{StaticResource MaterialDesignTextBox}">
+        <Setter Property="Height" Value="28"/>
+        <Setter Property="Margin" Value="2,0"/>
+        <Setter Property="Padding" Value="4"/>
+        <Setter Property="FontSize" Value="12"/>
+        <Setter Property="VerticalContentAlignment" Value="Center"/>
+        <Setter Property="materialDesign:HintAssist.FloatingScale" Value="0.8"/>
+    </Style>
+
+    <!-- Overlay List Item Style with Smooth Animations -->
+    <Style x:Key="OverlayListItemStyle" TargetType="ListBoxItem">
+        <Setter Property="Height" Value="32"/>
+        <Setter Property="Margin" Value="0,1"/>
+        <Setter Property="Padding" Value="4,2"/>
+        <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+        <Setter Property="RenderTransform">
+            <Setter.Value>
+                <TranslateTransform X="0"/>
+            </Setter.Value>
+        </Setter>
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="ListBoxItem">
+                    <Border x:Name="Border"
+                            Background="Transparent"
+                            BorderBrush="{TemplateBinding BorderBrush}"
+                            BorderThickness="0"
+                            CornerRadius="3"
+                            Opacity="1">
+                        <Border.RenderTransform>
+                            <ScaleTransform ScaleX="1" ScaleY="1"/>
+                        </Border.RenderTransform>
+                        <ContentPresenter HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
+                                        VerticalAlignment="{TemplateBinding VerticalContentAlignment}"
+                                        Margin="{TemplateBinding Padding}"/>
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Trigger.EnterActions>
+                                <BeginStoryboard>
+                                    <Storyboard>
+                                        <ColorAnimation Storyboard.TargetName="Border"
+                                                      Storyboard.TargetProperty="(Border.Background).(SolidColorBrush.Color)"
+                                                      To="#F5F5F5"
+                                                      Duration="0:0:0.15"/>
+                                        <DoubleAnimation Storyboard.TargetName="Border"
+                                                       Storyboard.TargetProperty="(Border.RenderTransform).(ScaleTransform.ScaleX)"
+                                                       To="1.02"
+                                                       Duration="0:0:0.15"/>
+                                        <DoubleAnimation Storyboard.TargetName="Border"
+                                                       Storyboard.TargetProperty="(Border.RenderTransform).(ScaleTransform.ScaleY)"
+                                                       To="1.02"
+                                                       Duration="0:0:0.15"/>
+                                    </Storyboard>
+                                </BeginStoryboard>
+                            </Trigger.EnterActions>
+                            <Trigger.ExitActions>
+                                <BeginStoryboard>
+                                    <Storyboard>
+                                        <ColorAnimation Storyboard.TargetName="Border"
+                                                      Storyboard.TargetProperty="(Border.Background).(SolidColorBrush.Color)"
+                                                      To="Transparent"
+                                                      Duration="0:0:0.15"/>
+                                        <DoubleAnimation Storyboard.TargetName="Border"
+                                                       Storyboard.TargetProperty="(Border.RenderTransform).(ScaleTransform.ScaleX)"
+                                                       To="1"
+                                                       Duration="0:0:0.15"/>
+                                        <DoubleAnimation Storyboard.TargetName="Border"
+                                                       Storyboard.TargetProperty="(Border.RenderTransform).(ScaleTransform.ScaleY)"
+                                                       To="1"
+                                                       Duration="0:0:0.15"/>
+                                    </Storyboard>
+                                </BeginStoryboard>
+                            </Trigger.ExitActions>
+                        </Trigger>
+                        <Trigger Property="IsSelected" Value="True">
+                            <Setter TargetName="Border" Property="Background">
+                                <Setter.Value>
+                                    <SolidColorBrush Color="#E3F2FD"/>
+                                </Setter.Value>
+                            </Setter>
+                        </Trigger>
+                        <EventTrigger RoutedEvent="Loaded">
+                            <BeginStoryboard>
+                                <Storyboard>
+                                    <DoubleAnimation Storyboard.TargetProperty="(UIElement.RenderTransform).(TranslateTransform.X)"
+                                                   From="20" To="0" Duration="0:0:0.3">
+                                        <DoubleAnimation.EasingFunction>
+                                            <QuarticEase EasingMode="EaseOut"/>
+                                        </DoubleAnimation.EasingFunction>
+                                    </DoubleAnimation>
+                                    <DoubleAnimation Storyboard.TargetProperty="Opacity"
+                                                   From="0" To="1" Duration="0:0:0.3"/>
+                                </Storyboard>
+                            </BeginStoryboard>
+                        </EventTrigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <!-- Smooth Fade Animation -->
+    <Storyboard x:Key="FadeInStoryboard">
+        <DoubleAnimation Storyboard.TargetProperty="Opacity"
+                         From="0" To="1" Duration="0:0:0.3"/>
+    </Storyboard>
+
+    <!-- Slide In Animation -->
+    <Storyboard x:Key="SlideInStoryboard">
+        <DoubleAnimation Storyboard.TargetProperty="(UIElement.RenderTransform).(TranslateTransform.X)"
+                         From="20" To="0" Duration="0:0:0.2"/>
+        <DoubleAnimation Storyboard.TargetProperty="Opacity"
+                         From="0" To="1" Duration="0:0:0.2"/>
+    </Storyboard>
+
+</ResourceDictionary>

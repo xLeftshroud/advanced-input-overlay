@@ -1,0 +1,92 @@
+{
+  "version": 1,
+  "texture": { "file": "wasd.png" },
+  "canvas": { "size": [705, 394], "background": [0, 0, 0, 0] },
+  "defaults": { "pressed_offset": [0, 131] },
+  "elements": [
+    {
+      "id": "tab",
+      "codes": { "hid": 43, "winvk": 9 },
+      "pos": [0, 0],
+      "sprite": { "normal": [1, 263, 157, 128] },
+      "z": 1
+    },
+    {
+      "id": "q",
+      "codes": { "hid": 20, "winvk": 81 },
+      "pos": [137, 0],
+      "sprite": { "normal": [1, 1, 157, 128] },
+      "z": 1
+    },
+    {
+      "id": "w",
+      "codes": { "hid": 26, "winvk": 87 },
+      "pos": [274, 0],
+      "sprite": { "normal": [161, 1, 157, 128] },
+      "z": 1
+    },
+    {
+      "id": "e",
+      "codes": { "hid": 8, "winvk": 69 },
+      "pos": [411, 0],
+      "sprite": { "normal": [321, 1, 157, 128] },
+      "z": 1
+    },
+    {
+      "id": "r",
+      "codes": { "hid": 21, "winvk": 82 },
+      "pos": [548, 0],
+      "sprite": { "normal": [161, 263, 157, 128] },
+      "z": 1
+    },
+    {
+      "id": "shift",
+      "codes": { "hid": 225, "winvk": 16 },
+      "pos": [0, 133],
+      "sprite": { "normal": [481, 1, 157, 128] },
+      "z": 1
+    },
+    {
+      "id": "a",
+      "codes": { "hid": 4, "winvk": 65 },
+      "pos": [137, 133],
+      "sprite": { "normal": [641, 1, 157, 128] },
+      "z": 1
+    },
+    {
+      "id": "s",
+      "codes": { "hid": 22, "winvk": 83 },
+      "pos": [274, 133],
+      "sprite": { "normal": [801, 1, 157, 128] },
+      "z": 1
+    },
+    {
+      "id": "d",
+      "codes": { "hid": 7, "winvk": 68 },
+      "pos": [411, 133],
+      "sprite": { "normal": [961, 1, 157, 128] },
+      "z": 1
+    },
+    {
+      "id": "f",
+      "codes": { "hid": 9, "winvk": 70 },
+      "pos": [548, 133],
+      "sprite": { "normal": [321, 263, 157, 128] },
+      "z": 1
+    },
+    {
+      "id": "ctrl",
+      "codes": { "hid": 224, "winvk": 17 },
+      "pos": [0, 266],
+      "sprite": { "normal": [1121, 1, 157, 128] },
+      "z": 1
+    },
+    {
+      "id": "space",
+      "codes": { "hid": 44, "winvk": 32 },
+      "pos": [137, 266],
+      "sprite": { "normal": [1301, 1, 421, 128] },
+      "z": 1
+    }
+  ]
+}

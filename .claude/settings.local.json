@@ -1,0 +1,21 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(cp:*)",
+      "Bash(mkdir:*)",
+      "Bash(rm:*)",
+      "Bash(msbuild:*)",
+      "Bash(net helpmsg:*)",
+      "Bash(tasklist)",
+      "Bash(findstr:*)",
+      "Bash(taskkill:*)",
+      "Bash(dotnet build:*)",
+      "Bash(copy:*)",
+      "Bash(xcopy:*)",
+      "Bash(dotnet clean:*)",
+      "Bash(dir:*)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}
