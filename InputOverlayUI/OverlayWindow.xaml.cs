@@ -20,11 +20,13 @@ namespace InputOverlayUI
         private OverlayConfig? _config;
         private BitmapImage? _overlayImage;
         private List<KeyElement> _keyElements = new List<KeyElement>();
-        private DispatcherTimer _inputTimer;
+        private DispatcherTimer? _inputTimer;
         private Dictionary<int, bool> _keyStates = new Dictionary<int, bool>();
         private bool _isDragging = false;
         private Point _dragStartPoint;
         private OverlayItem _overlayItem;
+        private HwndSource? _hwndSource;
+        private const int CornerSize = 15; // Size of corner resize areas
 
         // Windows API for key state detection
         [DllImport("user32.dll")]
@@ -40,20 +42,36 @@ namespace InputOverlayUI
         private const uint WS_EX_LAYERED = 0x80000;
         private const uint WS_EX_TRANSPARENT = 0x20;
 
+        // Window message constants for resize handling
+        private const int WM_NCHITTEST = 0x0084;
+        private const int WM_SIZING = 0x0214;
+        private const int WM_SIZE = 0x0005;
+
+        // Hit test result constants
+        private const int HTCLIENT = 1;
+        private const int HTLEFT = 10;
+        private const int HTRIGHT = 11;
+        private const int HTTOP = 12;
+        private const int HTTOPLEFT = 13;
+        private const int HTTOPRIGHT = 14;
+        private const int HTBOTTOM = 15;
+        private const int HTBOTTOMLEFT = 16;
+        private const int HTBOTTOMRIGHT = 17;
+
+        // Sizing constants
+        private const int WMSZ_LEFT = 1;
+        private const int WMSZ_RIGHT = 2;
+        private const int WMSZ_TOP = 3;
+        private const int WMSZ_TOPLEFT = 4;
+        private const int WMSZ_TOPRIGHT = 5;
+        private const int WMSZ_BOTTOM = 6;
+        private const int WMSZ_BOTTOMLEFT = 7;
+        private const int WMSZ_BOTTOMRIGHT = 8;
+
         public OverlayWindow(OverlayItem overlayItem)
         {
             InitializeComponent();
             _overlayItem = overlayItem;
-
-            // Set window properties based on no border mode BEFORE loading
-            if (overlayItem.NoBorders)
-            {
-                WindowStyle = WindowStyle.None;
-                AllowsTransparency = true;
-                Background = Brushes.Transparent;
-                ShowInTaskbar = false;
-                ResizeMode = ResizeMode.NoResize;
-            }
 
             // Set topmost property
             Topmost = overlayItem.TopMost;
@@ -64,21 +82,13 @@ namespace InputOverlayUI
             // Restore window position
             Left = overlayItem.WindowLeft;
             Top = overlayItem.WindowTop;
-
-            // Set size - always use the saved window size
             Width = overlayItem.WindowWidth;
             Height = overlayItem.WindowHeight;
 
-            // Initialize the no border mode based on the overlay item
-            NoBorderMenuItem.IsChecked = overlayItem.NoBorders;
-
-            // Setup dragging if in no border mode
-            if (overlayItem.NoBorders)
-            {
-                MouseLeftButtonDown += OverlayWindow_MouseLeftButtonDown;
-                MouseLeftButtonUp += OverlayWindow_MouseLeftButtonUp;
-                MouseMove += OverlayWindow_MouseMove;
-            }
+            // Setup dragging
+            MouseLeftButtonDown += OverlayWindow_MouseLeftButtonDown;
+            MouseLeftButtonUp += OverlayWindow_MouseLeftButtonUp;
+            MouseMove += OverlayWindow_MouseMove;
 
             // Subscribe to property changes for real-time updates
             overlayItem.PropertyChanged += OverlayItem_PropertyChanged;
@@ -86,6 +96,7 @@ namespace InputOverlayUI
             // Subscribe to window events to save position and size
             LocationChanged += OverlayWindow_LocationChanged;
             SizeChanged += OverlayWindow_SizeChanged;
+            SourceInitialized += OverlayWindow_SourceInitialized;
         }
 
         private void LoadOverlay(OverlayItem overlayItem)
@@ -199,19 +210,16 @@ namespace InputOverlayUI
         }
 
 
-        private void NoBorderMenuItem_Click(object sender, RoutedEventArgs e)
-        {
-            _overlayItem.NoBorders = NoBorderMenuItem.IsChecked;
-            // ToggleNoBorderMode() will be called automatically via PropertyChanged event
-        }
 
 
         private void OverlayWindow_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
         {
-            if (_overlayItem.NoBorders)
+            // Only start dragging if not near resize corners
+            var position = e.GetPosition(this);
+            if (!IsNearResizeCorner(position))
             {
                 _isDragging = true;
-                _dragStartPoint = e.GetPosition(this);
+                _dragStartPoint = position;
                 CaptureMouse();
             }
         }
@@ -227,7 +235,7 @@ namespace InputOverlayUI
 
         private void OverlayWindow_MouseMove(object sender, MouseEventArgs e)
         {
-            if (_isDragging && _overlayItem.NoBorders)
+            if (_isDragging)
             {
                 Point currentPosition = e.GetPosition(this);
                 Vector delta = currentPosition - _dragStartPoint;
@@ -237,34 +245,34 @@ namespace InputOverlayUI
             }
         }
 
+        private bool IsNearResizeCorner(Point position)
+        {
+            var overlayBounds = GetOverlayContentBounds();
+            if (overlayBounds == Rect.Empty) return false;
+
+            // Check if cursor is near any corner of the overlay content
+            bool nearLeft = position.X >= overlayBounds.Left - CornerSize && position.X <= overlayBounds.Left + CornerSize;
+            bool nearRight = position.X >= overlayBounds.Right - CornerSize && position.X <= overlayBounds.Right + CornerSize;
+            bool nearTop = position.Y >= overlayBounds.Top - CornerSize && position.Y <= overlayBounds.Top + CornerSize;
+            bool nearBottom = position.Y >= overlayBounds.Bottom - CornerSize && position.Y <= overlayBounds.Bottom + CornerSize;
+
+            // Return true if near any corner
+            return (nearLeft && nearTop) || (nearRight && nearTop) ||
+                   (nearLeft && nearBottom) || (nearRight && nearBottom);
+        }
+
         private void OverlayItem_PropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
         {
-            if (e.PropertyName == nameof(OverlayItem.NoBorders))
-            {
-                // Update checkbox to match the model (avoid infinite loop by checking if it's different)
-                if (NoBorderMenuItem.IsChecked != _overlayItem.NoBorders)
-                {
-                    NoBorderMenuItem.IsChecked = _overlayItem.NoBorders;
-                }
-
-                // For real-time switching, we need to recreate the window
-                // Save current state (always save current size regardless of mode)
-                _overlayItem.WindowLeft = Left;
-                _overlayItem.WindowTop = Top;
-                _overlayItem.WindowWidth = ActualWidth;
-                _overlayItem.WindowHeight = ActualHeight;
-
-                // Signal that we need to recreate the window
-                RecreateWindow?.Invoke();
-            }
-            else if (e.PropertyName == nameof(OverlayItem.TopMost))
+            if (e.PropertyName == nameof(OverlayItem.TopMost))
             {
                 // Update topmost property in real-time
                 Topmost = _overlayItem.TopMost;
             }
         }
 
-        public event Action? RecreateWindow;
+
+
+
 
         private void OverlayWindow_LocationChanged(object? sender, EventArgs e)
         {
@@ -275,9 +283,83 @@ namespace InputOverlayUI
 
         private void OverlayWindow_SizeChanged(object sender, SizeChangedEventArgs e)
         {
-            // Save current size to the model
             _overlayItem.WindowWidth = ActualWidth;
             _overlayItem.WindowHeight = ActualHeight;
+        }
+
+        private void OverlayWindow_SourceInitialized(object? sender, EventArgs e)
+        {
+            _hwndSource = HwndSource.FromHwnd(new WindowInteropHelper(this).Handle);
+            _hwndSource?.AddHook(WndProc);
+        }
+
+        private IntPtr WndProc(IntPtr hwnd, int msg, IntPtr wParam, IntPtr lParam, ref bool handled)
+        {
+            switch (msg)
+            {
+                case WM_NCHITTEST:
+                    handled = true;
+                    return HandleHitTest(lParam);
+            }
+            return IntPtr.Zero;
+        }
+
+        private IntPtr HandleHitTest(IntPtr lParam)
+        {
+            // Get cursor position relative to screen
+            int x = lParam.ToInt32() & 0xFFFF;
+            int y = (lParam.ToInt32() >> 16) & 0xFFFF;
+
+            // Convert to client coordinates
+            var point = PointFromScreen(new Point(x, y));
+
+            // Get the overlay content boundaries (Viewbox content)
+            var overlayBounds = GetOverlayContentBounds();
+            if (overlayBounds == Rect.Empty)
+            {
+                // If we can't get overlay bounds, default to client area
+                return new IntPtr(HTCLIENT);
+            }
+
+            // Check if cursor is near the corners of the overlay content
+            bool nearLeft = point.X >= overlayBounds.Left - CornerSize && point.X <= overlayBounds.Left + CornerSize;
+            bool nearRight = point.X >= overlayBounds.Right - CornerSize && point.X <= overlayBounds.Right + CornerSize;
+            bool nearTop = point.Y >= overlayBounds.Top - CornerSize && point.Y <= overlayBounds.Top + CornerSize;
+            bool nearBottom = point.Y >= overlayBounds.Bottom - CornerSize && point.Y <= overlayBounds.Bottom + CornerSize;
+
+            // Check for corner resize areas
+            if (nearLeft && nearTop) return new IntPtr(HTTOPLEFT);
+            if (nearRight && nearTop) return new IntPtr(HTTOPRIGHT);
+            if (nearLeft && nearBottom) return new IntPtr(HTBOTTOMLEFT);
+            if (nearRight && nearBottom) return new IntPtr(HTBOTTOMRIGHT);
+
+            // Default to client area (allows dragging)
+            return new IntPtr(HTCLIENT);
+        }
+
+        private Rect GetOverlayContentBounds()
+        {
+            try
+            {
+                // Get the transform from the Viewbox to get actual content bounds
+                var viewbox = OverlayViewbox;
+                if (viewbox?.Child == null) return Rect.Empty;
+
+                // Get the render transform of the viewbox content
+                var transform = viewbox.Child.TransformToAncestor(this);
+                var contentSize = viewbox.Child.RenderSize;
+
+                // Transform the content bounds to window coordinates
+                var topLeft = transform.Transform(new Point(0, 0));
+                var bottomRight = transform.Transform(new Point(contentSize.Width, contentSize.Height));
+
+                return new Rect(topLeft, bottomRight);
+            }
+            catch
+            {
+                // Fallback: use the entire window area
+                return new Rect(0, 0, ActualWidth, ActualHeight);
+            }
         }
 
         protected override void OnClosed(EventArgs e)
@@ -289,6 +371,11 @@ namespace InputOverlayUI
             }
             LocationChanged -= OverlayWindow_LocationChanged;
             SizeChanged -= OverlayWindow_SizeChanged;
+            SourceInitialized -= OverlayWindow_SourceInitialized;
+
+            // Remove window message hook
+            _hwndSource?.RemoveHook(WndProc);
+            _hwndSource = null;
 
             _inputTimer?.Stop();
             base.OnClosed(e);

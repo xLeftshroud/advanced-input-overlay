@@ -138,12 +138,6 @@ namespace InputOverlayUI.ViewModels
                     overlay.IsVisible = false;
                 };
 
-                // Handle window recreation for no border mode switching
-                overlayWindow.RecreateWindow += () => {
-                    // Close current window and recreate
-                    overlayWindow.Close();
-                    ShowOverlay(overlay);
-                };
 
                 overlayWindow.Show();
                 _openOverlays[overlay.Id] = overlayWindow;

@@ -7,7 +7,6 @@ namespace InputOverlayUI.Models
     {
         private string _name = "";
         private bool _isVisible;
-        private bool _noBorders;
         private bool _topMost;
         private string _configPath = "";
         private string _imagePath = "";
@@ -30,12 +29,6 @@ namespace InputOverlayUI.Models
             set => SetProperty(ref _isVisible, value);
         }
 
-        [DisplayName("No Borders")]
-        public bool NoBorders
-        {
-            get => _noBorders;
-            set => SetProperty(ref _noBorders, value);
-        }
 
         [DisplayName("Top Most")]
         public bool TopMost
