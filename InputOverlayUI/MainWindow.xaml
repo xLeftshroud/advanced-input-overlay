@@ -92,7 +92,6 @@
                             <ColumnDefinition Width="30"/>
                             <ColumnDefinition Width="30"/>
                             <ColumnDefinition Width="30"/>
-                            <ColumnDefinition Width="100"/>
                             <ColumnDefinition Width="80"/>
                             <ColumnDefinition Width="*"/>
                         </Grid.ColumnDefinitions>
@@ -102,8 +101,7 @@
                         <TextBlock Grid.Column="2" Text="❌" FontSize="12" HorizontalAlignment="Center" ToolTip="Close"/>
                         <TextBlock Grid.Column="3" Text="✏️" FontSize="12" HorizontalAlignment="Center" ToolTip="Edit"/>
                         <TextBlock Grid.Column="4" Text="🗑️" FontSize="12" HorizontalAlignment="Center" ToolTip="Delete"/>
-                        <TextBlock Grid.Column="5" Text="No Borders" FontWeight="Medium" FontSize="11"/>
-                        <TextBlock Grid.Column="6" Text="Top Most" FontWeight="Medium" FontSize="11"/>
+                        <TextBlock Grid.Column="5" Text="Top Most" FontWeight="Medium" FontSize="11"/>
                     </Grid>
                 </Border>
 
@@ -127,7 +125,6 @@
                                     <ColumnDefinition Width="30"/>
                                     <ColumnDefinition Width="30"/>
                                     <ColumnDefinition Width="30"/>
-                                    <ColumnDefinition Width="100"/>
                                     <ColumnDefinition Width="80"/>
                                     <ColumnDefinition Width="*"/>
                                 </Grid.ColumnDefinitions>
@@ -172,14 +169,8 @@
                                         CommandParameter="{Binding}"
                                         ToolTip="Delete Overlay"/>
 
-                                <!-- No Borders Checkbox -->
-                                <CheckBox Grid.Column="5"
-                                          IsChecked="{Binding NoBorders}"
-                                          Style="{StaticResource CompactCheckBoxStyle}"
-                                          Content="No Borders"/>
-
                                 <!-- Top Most Checkbox -->
-                                <CheckBox Grid.Column="6"
+                                <CheckBox Grid.Column="5"
                                           IsChecked="{Binding TopMost}"
                                           Style="{StaticResource CompactCheckBoxStyle}"
                                           Content="Top Most"/>
