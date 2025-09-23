@@ -261,7 +261,8 @@ namespace InputOverlayUI
                         ImagePath = ImagePath,
                         ConfigPath = ConfigPath,
                         IsVisible = false,
-                        TopMost = true
+                        TopMost = true,
+                        WindowPenetration = false
                     };
                 }
 

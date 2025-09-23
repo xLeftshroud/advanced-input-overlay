@@ -93,6 +93,9 @@ namespace InputOverlayUI
             // Subscribe to property changes for real-time updates
             overlayItem.PropertyChanged += OverlayItem_PropertyChanged;
 
+            // Apply initial window penetration setting
+            UpdateWindowPenetration();
+
             // Subscribe to window events to save position and size
             LocationChanged += OverlayWindow_LocationChanged;
             SizeChanged += OverlayWindow_SizeChanged;
@@ -268,6 +271,31 @@ namespace InputOverlayUI
                 // Update topmost property in real-time
                 Topmost = _overlayItem.TopMost;
             }
+            else if (e.PropertyName == nameof(OverlayItem.WindowPenetration))
+            {
+                // Update window penetration in real-time
+                UpdateWindowPenetration();
+            }
+        }
+
+        private void UpdateWindowPenetration()
+        {
+            if (_hwndSource?.Handle != IntPtr.Zero && _hwndSource != null)
+            {
+                IntPtr hwnd = _hwndSource.Handle;
+                if (_overlayItem.WindowPenetration)
+                {
+                    // Enable click-through (transparent to mouse input)
+                    uint extendedStyle = GetWindowLong(hwnd, GWL_EXSTYLE);
+                    SetWindowLong(hwnd, GWL_EXSTYLE, extendedStyle | WS_EX_TRANSPARENT);
+                }
+                else
+                {
+                    // Disable click-through (normal mouse input)
+                    uint extendedStyle = GetWindowLong(hwnd, GWL_EXSTYLE);
+                    SetWindowLong(hwnd, GWL_EXSTYLE, extendedStyle & ~WS_EX_TRANSPARENT);
+                }
+            }
         }
 
 
@@ -291,6 +319,9 @@ namespace InputOverlayUI
         {
             _hwndSource = HwndSource.FromHwnd(new WindowInteropHelper(this).Handle);
             _hwndSource?.AddHook(WndProc);
+
+            // Apply window penetration setting now that we have a window handle
+            UpdateWindowPenetration();
         }
 
         private IntPtr WndProc(IntPtr hwnd, int msg, IntPtr wParam, IntPtr lParam, ref bool handled)
