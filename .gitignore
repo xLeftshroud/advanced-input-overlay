@@ -553,6 +553,9 @@ appsettings.*.json
 !appsettings.json
 !appsettings.Development.json
 
+# bongo cat overlay files
+Bongo-Cat-Mver-master/
+
 # =============================================================================
 # End of .gitignore
 # =============================================================================
