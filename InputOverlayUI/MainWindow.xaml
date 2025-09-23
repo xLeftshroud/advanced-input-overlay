@@ -93,6 +93,7 @@
                             <ColumnDefinition Width="30"/>
                             <ColumnDefinition Width="30"/>
                             <ColumnDefinition Width="80"/>
+                            <ColumnDefinition Width="120"/>
                             <ColumnDefinition Width="*"/>
                         </Grid.ColumnDefinitions>
 
@@ -102,6 +103,7 @@
                         <TextBlock Grid.Column="3" Text="✏️" FontSize="12" HorizontalAlignment="Center" ToolTip="Edit"/>
                         <TextBlock Grid.Column="4" Text="🗑️" FontSize="12" HorizontalAlignment="Center" ToolTip="Delete"/>
                         <TextBlock Grid.Column="5" Text="Top Most" FontWeight="Medium" FontSize="11"/>
+                        <TextBlock Grid.Column="6" Text="Window Penetration" FontWeight="Medium" FontSize="11"/>
                     </Grid>
                 </Border>
 
@@ -126,6 +128,7 @@
                                     <ColumnDefinition Width="30"/>
                                     <ColumnDefinition Width="30"/>
                                     <ColumnDefinition Width="80"/>
+                                    <ColumnDefinition Width="120"/>
                                     <ColumnDefinition Width="*"/>
                                 </Grid.ColumnDefinitions>
 
@@ -174,6 +177,13 @@
                                           IsChecked="{Binding TopMost}"
                                           Style="{StaticResource CompactCheckBoxStyle}"
                                           Content="Top Most"/>
+
+                                <!-- Window Penetration Checkbox -->
+                                <CheckBox Grid.Column="6"
+                                          IsChecked="{Binding WindowPenetration}"
+                                          Style="{StaticResource CompactCheckBoxStyle}"
+                                          Content="Window Penetration"
+                                          ToolTip="窗口穿透启用后，窗口不影响对其他应用程序的操作"/>
                             </Grid>
                         </DataTemplate>
                     </ListBox.ItemTemplate>

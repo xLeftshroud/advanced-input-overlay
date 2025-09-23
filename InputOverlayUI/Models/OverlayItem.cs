@@ -8,6 +8,7 @@ namespace InputOverlayUI.Models
         private string _name = "";
         private bool _isVisible;
         private bool _topMost;
+        private bool _windowPenetration;
         private string _configPath = "";
         private string _imagePath = "";
         private double _windowLeft = 100;
@@ -35,6 +36,13 @@ namespace InputOverlayUI.Models
         {
             get => _topMost;
             set => SetProperty(ref _topMost, value);
+        }
+
+        [DisplayName("Window Penetration")]
+        public bool WindowPenetration
+        {
+            get => _windowPenetration;
+            set => SetProperty(ref _windowPenetration, value);
         }
 
         public string ConfigPath
