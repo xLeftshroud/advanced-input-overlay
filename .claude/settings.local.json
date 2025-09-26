@@ -13,7 +13,8 @@
       "Bash(copy:*)",
       "Bash(xcopy:*)",
       "Bash(dotnet clean:*)",
-      "Bash(dir:*)"
+      "Bash(dir:*)",
+      "Read(//c/Users/Samuel/Downloads/input-overlay-5.0.5-presets/mouse/**)"
     ],
     "deny": [],
     "ask": []

@@ -1,0 +1,79 @@
+{
+  "version": 1,
+  "texture": { "file": "mouse.png" },
+  "canvas": { "size": [285, 421], "background": [0, 0, 0, 0] },
+  "defaults": { "pressed_offset": [0, 0] },
+
+  "elements": [
+    { "id": "body", "pos": [2, 179], "sprite": { "normal": [328, 1, 283, 242] }, "z": 1 },
+
+    {
+      "id": "lmb",
+      "codes": { "hid": 1, "winvk": 1 },
+      "pos": [2, 0],
+      "sprite": {
+        "normal": [1, 1, 139, 174],
+        "pressed": [1, 178, 139, 174]
+      },
+      "z": 1
+    },
+    {
+      "id": "rmb",
+      "codes": { "hid": 2, "winvk": 2 },
+      "pos": [146, 0],
+      "sprite": {
+        "normal": [143, 1, 139, 174],
+        "pressed": [143, 178, 139, 174]
+      },
+      "z": 1
+    },
+
+    {
+      "id": "wheel",
+      "wheel": true,
+      "codes": { "hid": 3, "winvk": 4 },
+      "pos": [117, 79],
+      "sprite": {
+        "normal":   [285, 246, 48, 95],
+        "pressed":  [336, 246, 48, 95],
+        "up":       [387, 246, 48, 95],
+        "down":     [438, 246, 48, 95]
+      },
+      "z": 1
+    },
+
+    {
+      "id": "xbutton1",
+      "codes": { "hid": 5, "winvk": 5 },
+      "pos": [0, 210],
+      "sprite": {
+        "normal": [285, 1, 40, 62],
+        "pressed":  [285, 66, 40, 62]
+      },
+      "z": 1
+    },
+    {
+      "id": "xbutton2",
+      "codes": { "hid": 4, "winvk": 6 },
+      "pos": [11, 273],
+      "sprite": {
+        "normal": [285, 1, 40, 62],
+        "pressed":  [285, 66, 40, 62]
+      },
+      "z": 1
+    },
+
+    {
+      "id": "arrow",
+      "pos": [210, 235],
+      "sprite": {
+        "normal": [614, 1, 100, 100]
+      },
+      "cursor": {
+        "mode": "arrow",
+        "radius": 50
+      },
+      "z": 1
+    }
+  ]
+}
