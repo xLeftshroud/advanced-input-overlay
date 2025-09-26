@@ -118,11 +118,27 @@ namespace InputOverlayUI
         private const int VK_XBUTTON1 = 0x05;
         private const int VK_XBUTTON2 = 0x06;
 
-        [DllImport("user32.dll")]
-        private static extern IntPtr SetWindowLong(IntPtr hWnd, int nIndex, uint dwNewLong);
+        [DllImport("user32.dll", EntryPoint = "SetWindowLongPtr")]
+        private static extern IntPtr SetWindowLongPtr64(IntPtr hWnd, int nIndex, IntPtr dwNewLong);
 
-        [DllImport("user32.dll")]
-        private static extern uint GetWindowLong(IntPtr hWnd, int nIndex);
+        [DllImport("user32.dll", EntryPoint = "SetWindowLong")]
+        private static extern IntPtr SetWindowLong32(IntPtr hWnd, int nIndex, uint dwNewLong);
+
+        [DllImport("user32.dll", EntryPoint = "GetWindowLongPtr")]
+        private static extern IntPtr GetWindowLongPtr64(IntPtr hWnd, int nIndex);
+
+        [DllImport("user32.dll", EntryPoint = "GetWindowLong")]
+        private static extern uint GetWindowLong32(IntPtr hWnd, int nIndex);
+
+        private static IntPtr SetWindowLong(IntPtr hWnd, int nIndex, IntPtr dwNewLong)
+        {
+            return IntPtr.Size == 8 ? SetWindowLongPtr64(hWnd, nIndex, dwNewLong) : SetWindowLong32(hWnd, nIndex, (uint)dwNewLong);
+        }
+
+        private static IntPtr GetWindowLong(IntPtr hWnd, int nIndex)
+        {
+            return IntPtr.Size == 8 ? GetWindowLongPtr64(hWnd, nIndex) : new IntPtr(GetWindowLong32(hWnd, nIndex));
+        }
 
         private const int GWL_EXSTYLE = -20;
         private const uint WS_EX_LAYERED = 0x80000;
@@ -135,6 +151,7 @@ namespace InputOverlayUI
         private const int WM_MOUSEWHEEL = 0x020A;
 
         // Hit test result constants
+        private const int HTTRANSPARENT = -1;
         private const int HTCLIENT = 1;
         private const int HTLEFT = 10;
         private const int HTRIGHT = 11;
@@ -563,6 +580,12 @@ namespace InputOverlayUI
 
         private void OverlayWindow_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
         {
+            // Don't handle mouse events if window penetration is enabled
+            if (_overlayItem.WindowPenetration)
+            {
+                return;
+            }
+
             // Only start dragging if not near resize areas
             var position = e.GetPosition(this);
             if (!IsNearResizeArea(position))
@@ -575,6 +598,12 @@ namespace InputOverlayUI
 
         private void OverlayWindow_MouseLeftButtonUp(object sender, MouseButtonEventArgs e)
         {
+            // Don't handle mouse events if window penetration is enabled
+            if (_overlayItem.WindowPenetration)
+            {
+                return;
+            }
+
             if (_isDragging)
             {
                 _isDragging = false;
@@ -584,6 +613,12 @@ namespace InputOverlayUI
 
         private void OverlayWindow_MouseMove(object sender, MouseEventArgs e)
         {
+            // Don't handle mouse events if window penetration is enabled
+            if (_overlayItem.WindowPenetration)
+            {
+                return;
+            }
+
             if (_isDragging)
             {
                 Point currentPosition = e.GetPosition(this);
@@ -631,27 +666,21 @@ namespace InputOverlayUI
             {
                 IntPtr hwnd = _hwndSource.Handle;
 
-                // 对于鼠标覆盖层，强制禁用窗口穿透以确保能接收滚轮事件
-                if (_isMouseOverlay)
+                if (_overlayItem.WindowPenetration)
                 {
-                    // 鼠标覆盖层永远不启用穿透，确保能接收所有鼠标事件
-                    uint extendedStyle = GetWindowLong(hwnd, GWL_EXSTYLE);
-                    SetWindowLong(hwnd, GWL_EXSTYLE, extendedStyle & ~WS_EX_TRANSPARENT);
-                    System.Diagnostics.Debug.WriteLine("Mouse overlay: click-through DISABLED to receive wheel events");
-                }
-                else if (_overlayItem.WindowPenetration)
-                {
-                    // 只有键盘覆盖层才启用穿透
-                    uint extendedStyle = GetWindowLong(hwnd, GWL_EXSTYLE);
-                    SetWindowLong(hwnd, GWL_EXSTYLE, extendedStyle | WS_EX_TRANSPARENT);
-                    System.Diagnostics.Debug.WriteLine("Keyboard overlay: click-through enabled");
+                    // Enable window penetration for any overlay type
+                    IntPtr extendedStyle = GetWindowLong(hwnd, GWL_EXSTYLE);
+                    SetWindowLong(hwnd, GWL_EXSTYLE, new IntPtr(extendedStyle.ToInt64() | WS_EX_TRANSPARENT));
+                    IsHitTestVisible = false;
+                    System.Diagnostics.Debug.WriteLine($"Overlay '{_overlayItem.Name}': click-through enabled");
                 }
                 else
                 {
-                    // 普通模式，不穿透
-                    uint extendedStyle = GetWindowLong(hwnd, GWL_EXSTYLE);
-                    SetWindowLong(hwnd, GWL_EXSTYLE, extendedStyle & ~WS_EX_TRANSPARENT);
-                    System.Diagnostics.Debug.WriteLine("Normal overlay: click-through disabled");
+                    // Disable window penetration - normal interactive mode
+                    IntPtr extendedStyle = GetWindowLong(hwnd, GWL_EXSTYLE);
+                    SetWindowLong(hwnd, GWL_EXSTYLE, new IntPtr(extendedStyle.ToInt64() & ~WS_EX_TRANSPARENT));
+                    IsHitTestVisible = true;
+                    System.Diagnostics.Debug.WriteLine($"Overlay '{_overlayItem.Name}': click-through disabled");
                 }
             }
         }
@@ -688,10 +717,12 @@ namespace InputOverlayUI
             {
                 case WM_NCHITTEST:
                     handled = true;
-                    return HandleHitTest(lParam);
+                    var result = HandleHitTest(lParam);
+                    System.Diagnostics.Debug.WriteLine($"WM_NCHITTEST: WindowPenetration={_overlayItem.WindowPenetration}, Result={result.ToInt32()}");
+                    return result;
 
                 case WM_MOUSEWHEEL:
-                    if (_isMouseOverlay)
+                    if (_isMouseOverlay && !_overlayItem.WindowPenetration)
                     {
                         short delta = (short)((wParam.ToInt64() >> 16) & 0xFFFF);
                         HandleMouseWheelMessage(delta);
@@ -704,6 +735,13 @@ namespace InputOverlayUI
 
         private IntPtr HandleHitTest(IntPtr lParam)
         {
+            // Check if window penetration is enabled - make window completely transparent to mouse events
+            if (_overlayItem.WindowPenetration)
+            {
+                System.Diagnostics.Debug.WriteLine($"Window penetration enabled - returning HTTRANSPARENT for overlay: {_overlayItem.Name}");
+                return new IntPtr(HTTRANSPARENT);
+            }
+
             // Get cursor position relative to screen
             int x = lParam.ToInt32() & 0xFFFF;
             int y = (lParam.ToInt32() >> 16) & 0xFFFF;
