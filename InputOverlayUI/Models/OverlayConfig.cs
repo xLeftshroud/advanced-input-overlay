@@ -94,6 +94,24 @@ namespace InputOverlayUI.Models
 
         [JsonProperty("down")]
         public int[]? Down { get; set; }
+
+        [JsonProperty("left")]
+        public int[]? Left { get; set; }
+
+        [JsonProperty("right")]
+        public int[]? Right { get; set; }
+
+        [JsonProperty("up_left")]
+        public int[]? UpLeft { get; set; }
+
+        [JsonProperty("up_right")]
+        public int[]? UpRight { get; set; }
+
+        [JsonProperty("down_left")]
+        public int[]? DownLeft { get; set; }
+
+        [JsonProperty("down_right")]
+        public int[]? DownRight { get; set; }
     }
 
     public class CursorInfo
@@ -103,6 +121,18 @@ namespace InputOverlayUI.Models
 
         [JsonProperty("radius")]
         public int? Radius { get; set; }
+
+        [JsonProperty("sensitivity")]
+        public double? Sensitivity { get; set; }
+
+        [JsonProperty("use_monitor_center")]
+        public bool? UseMonitorCenter { get; set; }
+
+        [JsonProperty("monitor_center_x")]
+        public int? MonitorCenterX { get; set; }
+
+        [JsonProperty("monitor_center_y")]
+        public int? MonitorCenterY { get; set; }
     }
 
     public class MouseEventData

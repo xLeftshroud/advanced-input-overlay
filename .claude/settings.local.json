@@ -14,7 +14,8 @@
       "Bash(xcopy:*)",
       "Bash(dotnet clean:*)",
       "Bash(dir:*)",
-      "Read(//c/Users/Samuel/Downloads/input-overlay-5.0.5-presets/mouse/**)"
+      "Read(//c/Users/Samuel/Downloads/input-overlay-5.0.5-presets/mouse/**)",
+      "WebSearch"
     ],
     "deny": [],
     "ask": []

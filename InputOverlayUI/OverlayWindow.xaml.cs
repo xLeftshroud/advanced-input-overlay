@@ -1012,6 +1012,7 @@ namespace InputOverlayUI
         private Image? _imageControl;
         private Vector _previousMovement = new Vector(0, 0);
         private DateTime _lastMovementTime = DateTime.Now;
+        private Point _lastMousePosition = new Point(0, 0);
 
         public CursorElement(ElementInfo element, BitmapImage sourceImage, DefaultsInfo defaults)
         {
@@ -1036,38 +1037,67 @@ namespace InputOverlayUI
 
             if (Element.Cursor.Mode == "arrow")
             {
-                // Arrow mode - update based on movement direction
+                // Arrow mode - rotate texture based on movement direction
                 var currentTime = DateTime.Now;
                 var deltaTime = (currentTime - _lastMovementTime).TotalMilliseconds;
 
-                if (deltaTime > 100) // Reset if no movement for 100ms
-                {
-                    _previousMovement = new Vector(0, 0);
-                    UpdateSprite();
-                }
-            }
-            else if (Element.Cursor.Mode == "dot")
-            {
-                // Dot mode - show if mouse is within radius
-                var overlayContentPos = new Point(Element.Position[0], Element.Position[1]);
-                var distance = (windowPos - overlayContentPos).Length;
+                // Calculate movement delta
+                var movementDelta = windowPos - _lastMousePosition;
 
-                if (distance <= (Element.Cursor.Radius ?? 50))
+                if (movementDelta.Length > 2.0) // Minimum movement threshold
                 {
-                    // Mouse is within range, update position
-                    var canvas = _imageControl.Parent as Canvas;
-                    if (canvas != null)
-                    {
-                        // Offset the cursor position to center it on the mouse
-                        Canvas.SetLeft(_imageControl, windowPos.X - Element.Sprite.Normal[2] / 2);
-                        Canvas.SetTop(_imageControl, windowPos.Y - Element.Sprite.Normal[3] / 2);
-                        _imageControl.Visibility = Visibility.Visible;
-                    }
+                    // Calculate rotation angle from movement vector
+                    // Add 90 degrees to correct for visual orientation (0° = up, not right)
+                    double angle = Math.Atan2(movementDelta.Y, movementDelta.X) * 180 / Math.PI + 90;
+
+                    // Apply rotation transform to the image
+                    var rotateTransform = new RotateTransform(angle);
+                    rotateTransform.CenterX = _imageControl.Width / 2;
+                    rotateTransform.CenterY = _imageControl.Height / 2;
+                    _imageControl.RenderTransform = rotateTransform;
+
+                    _lastMovementTime = currentTime;
+                    _imageControl.Visibility = Visibility.Visible;
                 }
-                else
+                else if (deltaTime > 200) // Hide arrow if no movement for 200ms
                 {
                     _imageControl.Visibility = Visibility.Hidden;
                 }
+
+                _lastMousePosition = windowPos;
+            }
+            else if (Element.Cursor.Mode == "dot")
+            {
+                // Dot mode - move dot relative to center position based on mouse delta
+                var movementDelta = windowPos - _lastMousePosition;
+
+                if (movementDelta.Length > 0.5) // Minimum movement threshold
+                {
+                    // Use configured sensitivity or default (inverse ratio - lower = more sensitive)
+                    double sensitivity = Element.Cursor.Sensitivity ?? 0.3;
+                    _previousMovement += movementDelta * sensitivity;
+
+                    // Constrain movement within configured radius
+                    var radius = Element.Cursor.Radius ?? 50;
+                    if (_previousMovement.Length > radius)
+                    {
+                        _previousMovement = _previousMovement / _previousMovement.Length * radius;
+                    }
+
+                    // Update dot position relative to its center
+                    var canvas = _imageControl.Parent as Canvas;
+                    if (canvas != null)
+                    {
+                        var centerPos = new Point(Element.Position[0], Element.Position[1]);
+                        var dotPos = centerPos + _previousMovement;
+
+                        Canvas.SetLeft(_imageControl, dotPos.X - Element.Sprite.Normal[2] / 2);
+                        Canvas.SetTop(_imageControl, dotPos.Y - Element.Sprite.Normal[3] / 2);
+                        _imageControl.Visibility = Visibility.Visible;
+                    }
+                }
+
+                _lastMousePosition = windowPos;
             }
         }
 
@@ -1084,5 +1114,6 @@ namespace InputOverlayUI
             _imageControl.Width = Element.Sprite.Normal[2];
             _imageControl.Height = Element.Sprite.Normal[3];
         }
+
     }
 }

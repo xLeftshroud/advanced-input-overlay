@@ -67,11 +67,21 @@
       "id": "arrow",
       "pos": [210, 235],
       "sprite": {
-        "normal": [614, 1, 100, 100]
+        "normal": [614, 1, 100, 100],
+        "up": [614, 1, 100, 100],
+        "down": [614, 1, 100, 100],
+        "left": [614, 1, 100, 100],
+        "right": [614, 1, 100, 100],
+        "up_left": [614, 1, 100, 100],
+        "up_right": [614, 1, 100, 100],
+        "down_left": [614, 1, 100, 100],
+        "down_right": [614, 1, 100, 100]
       },
       "cursor": {
         "mode": "arrow",
-        "radius": 50
+        "radius": 100,
+        "sensitivity": 1.0,
+        "use_monitor_center": false
       },
       "z": 1
     }

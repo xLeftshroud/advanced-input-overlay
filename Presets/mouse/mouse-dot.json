@@ -79,7 +79,9 @@
       },
       "cursor": {
         "mode": "dot",
-        "radius": 50
+        "radius": 50,
+        "sensitivity": 0.3,
+        "use_monitor_center": false
       },
       "z": 1
     }
