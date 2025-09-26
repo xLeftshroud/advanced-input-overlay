@@ -8,6 +8,10 @@ InputDetection::InputDetection()
 {
     ZeroMemory(&m_mouseState, sizeof(m_mouseState));
     m_mousePosition = Vector2i(0, 0);
+    m_previousMousePosition = Vector2i(0, 0);
+    m_mouseMovement = Vector2i(0, 0);
+    m_mouseWheelDelta = 0;
+    m_previousWheelDelta = 0;
 }
 
 InputDetection::~InputDetection()
@@ -180,6 +184,10 @@ void InputDetection::UpdateMouseInput()
         return;
     }
 
+    // Store previous mouse position and wheel state
+    m_previousMousePosition = m_mousePosition;
+    m_previousWheelDelta = m_mouseWheelDelta;
+
     // Update mouse position (get absolute position)
     POINT cursorPos;
     if (GetCursorPos(&cursorPos))
@@ -188,11 +196,29 @@ void InputDetection::UpdateMouseInput()
         m_mousePosition.y = cursorPos.y;
     }
 
+    // Calculate mouse movement
+    m_mouseMovement.x = m_mousePosition.x - m_previousMousePosition.x;
+    m_mouseMovement.y = m_mousePosition.y - m_previousMousePosition.y;
+
+    // Update mouse wheel delta from DirectInput
+    m_mouseWheelDelta = m_mouseState.lZ;
+
     // Update mouse button states (using DirectInput for precise timing)
     // Note: Could also use GetKeyState(VK_LBUTTON) etc. for consistency
     m_keyStates[VK_LBUTTON] = (m_mouseState.rgbButtons[0] & 0x80) != 0;
     m_keyStates[VK_RBUTTON] = (m_mouseState.rgbButtons[1] & 0x80) != 0;
     m_keyStates[VK_MBUTTON] = (m_mouseState.rgbButtons[2] & 0x80) != 0;
+
+    // Support for additional mouse buttons (X buttons)
+    if (m_mouseState.rgbButtons[3] & 0x80) // X Button 1
+        m_keyStates[VK_XBUTTON1] = true;
+    else
+        m_keyStates[VK_XBUTTON1] = false;
+
+    if (m_mouseState.rgbButtons[4] & 0x80) // X Button 2
+        m_keyStates[VK_XBUTTON2] = true;
+    else
+        m_keyStates[VK_XBUTTON2] = false;
 }
 
 bool InputDetection::IsKeyPressed(const InputKey& key)
@@ -224,9 +250,11 @@ bool InputDetection::IsMouseButtonPressed(int button)
 {
     switch (button)
     {
-    case 0: return IsKeyPressed({0, VK_LBUTTON, 0, "left_mouse"});
-    case 1: return IsKeyPressed({0, VK_RBUTTON, 0, "right_mouse"});
-    case 2: return IsKeyPressed({0, VK_MBUTTON, 0, "middle_mouse"});
+    case 1: return IsKeyPressed({1, VK_LBUTTON, 0, "left_mouse"});   // HID 1 = Left Button
+    case 2: return IsKeyPressed({2, VK_RBUTTON, 0, "right_mouse"});  // HID 2 = Right Button
+    case 3: return IsKeyPressed({3, VK_MBUTTON, 0, "middle_mouse"}); // HID 3 = Middle Button
+    case 4: return IsKeyPressed({4, VK_XBUTTON2, 0, "xbutton2"});    // HID 4 = X Button 2
+    case 5: return IsKeyPressed({5, VK_XBUTTON1, 0, "xbutton1"});    // HID 5 = X Button 1
     default: return false;
     }
 }
@@ -234,6 +262,16 @@ bool InputDetection::IsMouseButtonPressed(int button)
 Vector2i InputDetection::GetMousePosition()
 {
     return m_mousePosition;
+}
+
+Vector2i InputDetection::GetMouseMovement()
+{
+    return m_mouseMovement;
+}
+
+int InputDetection::GetMouseWheelDelta()
+{
+    return m_mouseWheelDelta;
 }
 
 void InputDetection::Cleanup()

@@ -171,6 +171,17 @@ bool ConfigParser::ParseElement(const std::string& elementJson, OverlayElement& 
     // Parse z-order
     element.zOrder = JSONUtils::ExtractIntValue(elementJson, "z");
 
+    // Parse wheel property
+    std::string wheelValue = JSONUtils::ExtractValue(elementJson, "wheel");
+    element.isWheel = (wheelValue == "true");
+
+    // Parse cursor property
+    std::string cursorJson = JSONUtils::ExtractValue(elementJson, "cursor");
+    if (!cursorJson.empty())
+    {
+        ParseCursor(cursorJson, element.cursor);
+    }
+
     return true;
 }
 
@@ -210,6 +221,35 @@ bool ConfigParser::ParseSprite(const std::string& spriteJson, SpriteInfo& sprite
         );
         sprite.hasPressedState = true;
     }
+
+    // Parse up sprite rect (for wheel scroll up)
+    auto upArray = JSONUtils::ExtractIntArray(spriteJson, "up");
+    if (upArray.size() >= 4)
+    {
+        sprite.up = IntRect(upArray[0], upArray[1], upArray[2], upArray[3]);
+        sprite.hasUpState = true;
+    }
+
+    // Parse down sprite rect (for wheel scroll down)
+    auto downArray = JSONUtils::ExtractIntArray(spriteJson, "down");
+    if (downArray.size() >= 4)
+    {
+        sprite.down = IntRect(downArray[0], downArray[1], downArray[2], downArray[3]);
+        sprite.hasDownState = true;
+    }
+
+    return true;
+}
+
+bool ConfigParser::ParseCursor(const std::string& cursorJson, CursorInfo& cursor)
+{
+    cursor.enabled = true;
+    cursor.mode = JSONUtils::ExtractStringValue(cursorJson, "mode");
+    cursor.radius = JSONUtils::ExtractIntValue(cursorJson, "radius");
+
+    // Set default radius if not provided
+    if (cursor.radius == 0)
+        cursor.radius = 50;
 
     return true;
 }

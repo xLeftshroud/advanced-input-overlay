@@ -21,7 +21,8 @@ enum class IPCMessageType
     ADD_OVERLAY = 5,
     REMOVE_OVERLAY = 6,
     UPDATE_OVERLAY = 7,
-    STATUS_UPDATE = 8
+    STATUS_UPDATE = 8,
+    MOUSE_EVENT = 9
 };
 
 // Basic vector and rect structures (replacing SFML temporarily)
@@ -68,7 +69,19 @@ struct SpriteInfo
 {
     IntRect normal;
     IntRect pressed;
+    IntRect up;      // For wheel scroll up
+    IntRect down;    // For wheel scroll down
     bool hasPressedState = false;
+    bool hasUpState = false;
+    bool hasDownState = false;
+};
+
+// Cursor/movement information
+struct CursorInfo
+{
+    std::string mode; // "arrow", "dot", etc.
+    int radius = 50; // For dot mode
+    bool enabled = false;
 };
 
 // Overlay element
@@ -80,6 +93,9 @@ struct OverlayElement
     SpriteInfo sprite;
     int zOrder = 0;
     bool isPressed = false;
+    bool isWheel = false;
+    int wheelState = 0; // 0=normal, 1=pressed, 2=up, 3=down
+    CursorInfo cursor;
 };
 
 // Overlay configuration
@@ -92,6 +108,19 @@ struct OverlayConfig
     Color backgroundColor = Color::Transparent;
     Vector2i defaultPressedOffset;
     std::vector<OverlayElement> elements;
+};
+
+// Mouse event data structure
+struct MouseEventData
+{
+    Vector2i position;
+    Vector2i movement;
+    int wheelDelta;
+    bool leftButton;
+    bool rightButton;
+    bool middleButton;
+    bool xButton1;
+    bool xButton2;
 };
 
 // IPC Message structure

@@ -14,6 +14,10 @@ IPCManager g_ipcManager;
 // Map to store active overlays (simplified)
 std::map<int, OverlayConfig> g_overlayConfigs;
 
+// Mouse state tracking
+MouseEventData g_previousMouseState;
+bool g_hasMouseOverlays = false;
+
 void ProcessIPCMessage(const IPCMessage& message)
 {
     switch (message.type)
@@ -43,6 +47,17 @@ void ProcessIPCMessage(const IPCMessage& message)
         if (g_configParser.ParseFromString(message.data, config))
         {
             g_overlayConfigs[message.overlayId] = config;
+
+            // Check if this overlay has cursor elements
+            for (const auto& element : config.elements)
+            {
+                if (element.cursor.enabled)
+                {
+                    g_hasMouseOverlays = true;
+                    break;
+                }
+            }
+
             cout << "Successfully added overlay configuration" << endl;
         }
         else
@@ -68,6 +83,62 @@ void ProcessIPCMessage(const IPCMessage& message)
     default:
         cout << "Unknown IPC message type" << endl;
         break;
+    }
+}
+
+void SendMouseEventUpdate()
+{
+    if (!g_hasMouseOverlays)
+        return;
+
+    // Get current mouse state
+    MouseEventData currentMouseState;
+    currentMouseState.position = g_inputDetection.GetMousePosition();
+    currentMouseState.movement = g_inputDetection.GetMouseMovement();
+    currentMouseState.wheelDelta = g_inputDetection.GetMouseWheelDelta();
+    currentMouseState.leftButton = g_inputDetection.IsMouseButtonPressed(1);
+    currentMouseState.rightButton = g_inputDetection.IsMouseButtonPressed(2);
+    currentMouseState.middleButton = g_inputDetection.IsMouseButtonPressed(3);
+    currentMouseState.xButton1 = g_inputDetection.IsMouseButtonPressed(5);
+    currentMouseState.xButton2 = g_inputDetection.IsMouseButtonPressed(4);
+
+    // Check if anything changed
+    bool hasChanged =
+        (currentMouseState.position.x != g_previousMouseState.position.x) ||
+        (currentMouseState.position.y != g_previousMouseState.position.y) ||
+        (currentMouseState.movement.x != 0) ||
+        (currentMouseState.movement.y != 0) ||
+        (currentMouseState.wheelDelta != 0) ||
+        (currentMouseState.leftButton != g_previousMouseState.leftButton) ||
+        (currentMouseState.rightButton != g_previousMouseState.rightButton) ||
+        (currentMouseState.middleButton != g_previousMouseState.middleButton) ||
+        (currentMouseState.xButton1 != g_previousMouseState.xButton1) ||
+        (currentMouseState.xButton2 != g_previousMouseState.xButton2);
+
+    if (hasChanged)
+    {
+        // Create a simple JSON representation of mouse data
+        std::string mouseData = "{";
+        mouseData += "\"position\":[" + std::to_string(currentMouseState.position.x) + "," + std::to_string(currentMouseState.position.y) + "],";
+        mouseData += "\"movement\":[" + std::to_string(currentMouseState.movement.x) + "," + std::to_string(currentMouseState.movement.y) + "],";
+        mouseData += "\"wheelDelta\":" + std::to_string(currentMouseState.wheelDelta) + ",";
+        mouseData += "\"leftButton\":" + std::string(currentMouseState.leftButton ? "true" : "false") + ",";
+        mouseData += "\"rightButton\":" + std::string(currentMouseState.rightButton ? "true" : "false") + ",";
+        mouseData += "\"middleButton\":" + std::string(currentMouseState.middleButton ? "true" : "false") + ",";
+        mouseData += "\"xButton1\":" + std::string(currentMouseState.xButton1 ? "true" : "false") + ",";
+        mouseData += "\"xButton2\":" + std::string(currentMouseState.xButton2 ? "true" : "false");
+        mouseData += "}";
+
+        // Send mouse event message
+        IPCMessage mouseMessage;
+        mouseMessage.type = IPCMessageType::MOUSE_EVENT;
+        mouseMessage.overlayId = 0; // Mouse events are global
+        mouseMessage.data = mouseData;
+
+        g_ipcManager.SendMessage(mouseMessage);
+
+        // Update previous state
+        g_previousMouseState = currentMouseState;
     }
 }
 
@@ -104,6 +175,9 @@ int main()
 
         // Update input detection
         g_inputDetection.Update();
+
+        // Send mouse events if needed
+        SendMouseEventUpdate();
 
         // Small delay to prevent high CPU usage
         Sleep(16); // ~60 FPS equivalent

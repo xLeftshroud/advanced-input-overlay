@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
+using System.Linq;
 using System.Runtime.InteropServices;
 using System.Windows;
 using System.Windows.Controls;
@@ -22,15 +23,100 @@ namespace InputOverlayUI
         private List<KeyElement> _keyElements = new List<KeyElement>();
         private DispatcherTimer? _inputTimer;
         private Dictionary<int, bool> _keyStates = new Dictionary<int, bool>();
+        private Dictionary<int, bool> _mouseButtonStates = new Dictionary<int, bool>();
         private bool _isDragging = false;
         private Point _dragStartPoint;
         private OverlayItem _overlayItem;
         private HwndSource? _hwndSource;
         private const int CornerSize = 15; // Size of corner resize areas
+        private List<CursorElement> _cursorElements = new List<CursorElement>();
+        private Point _lastMousePosition = new Point();
+        private bool _hasMouseElements = false;
+        private bool _isMouseOverlay = false;
+        private Dictionary<string, int> _wheelStates = new Dictionary<string, int>(); // Track wheel scroll states
+        private Dictionary<string, DateTime> _wheelScrollTimes = new Dictionary<string, DateTime>();
+        private DateTime _lastScrollTime = DateTime.MinValue;
+        private int _lastScrollDelta = 0;
 
         // Windows API for key state detection
         [DllImport("user32.dll")]
         private static extern short GetAsyncKeyState(int vKey);
+
+        [DllImport("user32.dll")]
+        private static extern bool GetCursorPos(out POINT lpPoint);
+
+        [DllImport("user32.dll")]
+        private static extern IntPtr GetForegroundWindow();
+
+        [DllImport("user32.dll")]
+        private static extern bool GetWindowRect(IntPtr hWnd, out RECT lpRect);
+
+        [DllImport("user32.dll")]
+        private static extern IntPtr SetWindowsHookEx(int idHook, HookProc lpfn, IntPtr hMod, uint dwThreadId);
+
+        [DllImport("user32.dll")]
+        private static extern bool UnhookWindowsHookEx(IntPtr hhk);
+
+        [DllImport("user32.dll")]
+        private static extern IntPtr CallNextHookEx(IntPtr hhk, int nCode, IntPtr wParam, IntPtr lParam);
+
+        [DllImport("kernel32.dll")]
+        private static extern IntPtr GetModuleHandle(string lpModuleName);
+
+        [DllImport("user32.dll")]
+        private static extern bool GetScrollInfo(IntPtr hwnd, int fnBar, ref SCROLLINFO lpsi);
+
+        [StructLayout(LayoutKind.Sequential)]
+        public struct SCROLLINFO
+        {
+            public uint cbSize;
+            public uint fMask;
+            public int nMin;
+            public int nMax;
+            public uint nPage;
+            public int nPos;
+            public int nTrackPos;
+        }
+
+        [StructLayout(LayoutKind.Sequential)]
+        public struct MSLLHOOKSTRUCT
+        {
+            public POINT pt;
+            public uint mouseData;
+            public uint flags;
+            public uint time;
+            public IntPtr dwExtraInfo;
+        }
+
+        private delegate IntPtr HookProc(int nCode, IntPtr wParam, IntPtr lParam);
+        private HookProc? _mouseHookProc;
+        private IntPtr _mouseHook = IntPtr.Zero;
+        private const int WH_MOUSE_LL = 14;
+        private const int WM_MOUSEWHEEL_HOOK = 0x020A;
+
+        [StructLayout(LayoutKind.Sequential)]
+        public struct RECT
+        {
+            public int Left;
+            public int Top;
+            public int Right;
+            public int Bottom;
+        }
+
+
+        [StructLayout(LayoutKind.Sequential)]
+        public struct POINT
+        {
+            public int X;
+            public int Y;
+        }
+
+        // Virtual key codes for mouse buttons
+        private const int VK_LBUTTON = 0x01;
+        private const int VK_RBUTTON = 0x02;
+        private const int VK_MBUTTON = 0x04;
+        private const int VK_XBUTTON1 = 0x05;
+        private const int VK_XBUTTON2 = 0x06;
 
         [DllImport("user32.dll")]
         private static extern IntPtr SetWindowLong(IntPtr hWnd, int nIndex, uint dwNewLong);
@@ -46,6 +132,7 @@ namespace InputOverlayUI
         private const int WM_NCHITTEST = 0x0084;
         private const int WM_SIZING = 0x0214;
         private const int WM_SIZE = 0x0005;
+        private const int WM_MOUSEWHEEL = 0x020A;
 
         // Hit test result constants
         private const int HTCLIENT = 1;
@@ -100,6 +187,7 @@ namespace InputOverlayUI
             LocationChanged += OverlayWindow_LocationChanged;
             SizeChanged += OverlayWindow_SizeChanged;
             SourceInitialized += OverlayWindow_SourceInitialized;
+
         }
 
         private void LoadOverlay(OverlayItem overlayItem)
@@ -148,6 +236,23 @@ namespace InputOverlayUI
                 }
 
                 CreateKeyElements();
+
+                // Add mouse wheel event handling for mouse overlays
+                if (_isMouseOverlay)
+                {
+                    // Enable all possible wheel event capture methods
+                    MouseWheel += OverlayWindow_MouseWheel;
+                    PreviewMouseWheel += OverlayWindow_PreviewMouseWheel;
+
+                    // Setup global mouse hook for system-wide wheel detection
+                    SetupMouseHook();
+
+                    // Make sure window can receive wheel events
+                    Background = Brushes.Transparent;
+                    AllowsTransparency = true;
+
+                    System.Diagnostics.Debug.WriteLine("Mouse overlay wheel detection enabled with global hook");
+                }
             }
             catch (Exception ex)
             {
@@ -160,24 +265,94 @@ namespace InputOverlayUI
             if (_config?.Elements == null || _overlayImage == null) return;
 
             _keyElements.Clear();
+            _cursorElements.Clear();
             OverlayCanvas.Children.Clear();
+            _hasMouseElements = false;
+            _isMouseOverlay = false;
+
+            // First pass: detect if this is a mouse overlay
+            foreach (var element in _config.Elements)
+            {
+                if (IsMouseElement(element))
+                {
+                    _isMouseOverlay = true;
+                    _hasMouseElements = true;
+                    System.Diagnostics.Debug.WriteLine($"Detected mouse overlay due to element: {element.Id}");
+                    break;
+                }
+            }
+
+            System.Diagnostics.Debug.WriteLine($"Is mouse overlay: {_isMouseOverlay}");
 
             foreach (var element in _config.Elements)
             {
-                var keyElement = new KeyElement(element, _overlayImage, _config.Defaults);
-                _keyElements.Add(keyElement);
-
-                var image = keyElement.CreateImageControl();
-                Canvas.SetLeft(image, element.Position[0]);
-                Canvas.SetTop(image, element.Position[1]);
-                Canvas.SetZIndex(image, element.Z ?? 1);
-
-                OverlayCanvas.Children.Add(image);
-
-                // Track key state
-                if (element.Codes.WinVk.HasValue)
+                // Check if this is a cursor element
+                if (element.Cursor != null && !string.IsNullOrEmpty(element.Cursor.Mode))
                 {
-                    _keyStates[element.Codes.WinVk.Value] = false;
+                    var cursorElement = new CursorElement(element, _overlayImage, _config.Defaults);
+                    _cursorElements.Add(cursorElement);
+
+                    var image = cursorElement.CreateImageControl();
+                    Canvas.SetLeft(image, element.Position[0]);
+                    Canvas.SetTop(image, element.Position[1]);
+                    Canvas.SetZIndex(image, element.Z ?? 1);
+
+                    OverlayCanvas.Children.Add(image);
+                    _hasMouseElements = true;
+                }
+                else
+                {
+                    var keyElement = new KeyElement(element, _overlayImage, _config.Defaults);
+                    _keyElements.Add(keyElement);
+
+                    var image = keyElement.CreateImageControl();
+                    Canvas.SetLeft(image, element.Position[0]);
+                    Canvas.SetTop(image, element.Position[1]);
+                    Canvas.SetZIndex(image, element.Z ?? 1);
+
+                    OverlayCanvas.Children.Add(image);
+
+                    // Track key or mouse button state
+                    if (element.Wheel == true || element.Id.ToLower().Contains("wheel") ||
+                        element.Sprite.Up != null || element.Sprite.Down != null)
+                    {
+                        // For wheel elements, we track middle mouse button for press detection
+                        _mouseButtonStates[VK_MBUTTON] = false;
+                        _wheelStates[element.Id] = 0; // Initialize wheel state
+                        _hasMouseElements = true;
+                        System.Diagnostics.Debug.WriteLine($"Found wheel element: {element.Id}");
+                    }
+                    else if (element.Codes.WinVk.HasValue)
+                    {
+                        var vk = element.Codes.WinVk.Value;
+                        if (IsMouseButton(vk))
+                        {
+                            _mouseButtonStates[vk] = false;
+                            _hasMouseElements = true;
+                        }
+                        else
+                        {
+                            _keyStates[vk] = false;
+                        }
+                    }
+                    else if (element.Codes.Hid.HasValue)
+                    {
+                        // Map HID codes to VK codes for mouse buttons
+                        var hidCode = element.Codes.Hid.Value;
+                        var vk = HidToVirtualKey(hidCode);
+                        if (vk != 0)
+                        {
+                            if (IsMouseButton(vk))
+                            {
+                                _mouseButtonStates[vk] = false;
+                                _hasMouseElements = true;
+                            }
+                            else
+                            {
+                                _keyStates[vk] = false;
+                            }
+                        }
+                    }
                 }
             }
         }
@@ -194,19 +369,190 @@ namespace InputOverlayUI
 
         private void CheckKeyStates(object? sender, EventArgs e)
         {
-            if (_keyElements.Count == 0) return;
-
+            // Check keyboard elements
             foreach (var keyElement in _keyElements)
             {
-                if (keyElement.Element.Codes.WinVk.HasValue)
+                if (keyElement.Element.Wheel == true || keyElement.Element.Id.ToLower().Contains("wheel") ||
+                    keyElement.Element.Sprite.Up != null || keyElement.Element.Sprite.Down != null)
                 {
-                    int vk = keyElement.Element.Codes.WinVk.Value;
-                    bool isPressed = (GetAsyncKeyState(vk) & 0x8000) != 0;
+                    // Handle wheel element specifically
+                    CheckWheelElement(keyElement);
+                }
+                else
+                {
+                    // Handle regular key/button elements
+                    bool isPressed = false;
+                    int trackingKey = 0;
 
-                    if (_keyStates.ContainsKey(vk) && _keyStates[vk] != isPressed)
+                    if (keyElement.Element.Codes.WinVk.HasValue)
                     {
-                        _keyStates[vk] = isPressed;
-                        keyElement.SetPressed(isPressed);
+                        trackingKey = keyElement.Element.Codes.WinVk.Value;
+                        isPressed = (GetAsyncKeyState(trackingKey) & 0x8000) != 0;
+                    }
+                    else if (keyElement.Element.Codes.Hid.HasValue)
+                    {
+                        trackingKey = HidToVirtualKey(keyElement.Element.Codes.Hid.Value);
+                        if (trackingKey != 0)
+                        {
+                            isPressed = (GetAsyncKeyState(trackingKey) & 0x8000) != 0;
+                        }
+                    }
+
+                    if (trackingKey != 0)
+                    {
+                        var stateDict = IsMouseButton(trackingKey) ? _mouseButtonStates : _keyStates;
+                        if (stateDict.ContainsKey(trackingKey) && stateDict[trackingKey] != isPressed)
+                        {
+                            stateDict[trackingKey] = isPressed;
+                            keyElement.SetPressed(isPressed);
+                        }
+                    }
+                }
+            }
+
+            // Check cursor elements and update positions
+            if (_hasMouseElements && _cursorElements.Count > 0)
+            {
+                GetCursorPos(out POINT cursorPos);
+                var currentMousePos = new Point(cursorPos.X, cursorPos.Y);
+
+                if (currentMousePos != _lastMousePosition)
+                {
+                    UpdateCursorElements(currentMousePos);
+                    _lastMousePosition = currentMousePos;
+                }
+            }
+
+            // Update wheel element states (reset scroll states after delay)
+            if (_isMouseOverlay)
+            {
+                UpdateWheelStates();
+            }
+        }
+
+        private void OverlayWindow_MouseWheel(object sender, MouseWheelEventArgs e)
+        {
+            System.Diagnostics.Debug.WriteLine($"MouseWheel event: delta={e.Delta}, isMouseOverlay={_isMouseOverlay}");
+            if (!_isMouseOverlay) return;
+            HandleMouseWheelMessage(e.Delta);
+            e.Handled = true;
+        }
+
+        private void OverlayWindow_PreviewMouseWheel(object sender, MouseWheelEventArgs e)
+        {
+            System.Diagnostics.Debug.WriteLine($"PreviewMouseWheel event: delta={e.Delta}, isMouseOverlay={_isMouseOverlay}");
+            if (!_isMouseOverlay) return;
+            HandleMouseWheelMessage(e.Delta);
+            // Don't set e.Handled = true here to allow the event to bubble up
+        }
+
+        private void HandleMouseWheelMessage(int delta)
+        {
+            if (!_isMouseOverlay) return;
+
+            var currentTime = DateTime.Now;
+
+            // Prevent duplicate events within 10ms only (更快响应，减少延迟)
+            if ((currentTime - _lastScrollTime).TotalMilliseconds < 10 && delta == _lastScrollDelta)
+            {
+                System.Diagnostics.Debug.WriteLine($"Ignoring duplicate wheel event: delta={delta}");
+                return;
+            }
+
+            _lastScrollTime = currentTime;
+            _lastScrollDelta = delta;
+
+            System.Diagnostics.Debug.WriteLine($"Processing mouse wheel: delta={delta}, direction={(delta > 0 ? "UP" : "DOWN")}");
+
+            // Update wheel elements based on scroll direction
+            foreach (var keyElement in _keyElements)
+            {
+                if (keyElement.Element.Wheel == true || keyElement.Element.Id.ToLower().Contains("wheel") ||
+                    keyElement.Element.Sprite.Up != null || keyElement.Element.Sprite.Down != null)
+                {
+                    var wheelState = delta > 0 ? 2 : 3; // 2 = up, 3 = down
+
+                    // Force set the wheel state
+                    keyElement.SetWheelState(wheelState);
+
+                    // Track the scroll time to reset state later
+                    _wheelStates[keyElement.Element.Id] = wheelState;
+                    _wheelScrollTimes[keyElement.Element.Id] = currentTime;
+
+                    System.Diagnostics.Debug.WriteLine($"✓ Applied wheel state {(wheelState == 2 ? "UP" : "DOWN")} to element '{keyElement.Element.Id}'");
+                }
+            }
+        }
+
+        private void CheckWheelElement(KeyElement wheelElement)
+        {
+            // Check if middle mouse button (wheel) is pressed
+            bool isWheelPressed = (GetAsyncKeyState(VK_MBUTTON) & 0x8000) != 0;
+
+            var elementId = wheelElement.Element.Id;
+            var currentState = _wheelStates.ContainsKey(elementId) ? _wheelStates[elementId] : 0;
+
+            // Debug output
+            if (isWheelPressed)
+            {
+                System.Diagnostics.Debug.WriteLine($"Wheel pressed detected for {elementId}");
+            }
+
+            // Check for wheel button press first
+            if (isWheelPressed && currentState != 1)
+            {
+                _wheelStates[elementId] = 1; // Pressed state
+                wheelElement.SetWheelState(1);
+                _wheelScrollTimes[elementId] = DateTime.Now;
+                System.Diagnostics.Debug.WriteLine($"Set wheel state to PRESSED for {elementId}");
+            }
+            else if (!isWheelPressed && currentState == 1)
+            {
+                // Released from pressed state, go back to normal
+                _wheelStates[elementId] = 0;
+                wheelElement.SetWheelState(0);
+                if (_wheelScrollTimes.ContainsKey(elementId))
+                    _wheelScrollTimes.Remove(elementId);
+                System.Diagnostics.Debug.WriteLine($"Set wheel state to NORMAL for {elementId}");
+            }
+        }
+
+        private void UpdateWheelStates()
+        {
+            var currentTime = DateTime.Now;
+            var keysToReset = new List<string>();
+
+            foreach (var kvp in _wheelScrollTimes)
+            {
+                if ((currentTime - kvp.Value).TotalMilliseconds > 150) // 减少到150ms，快速响应
+                {
+                    keysToReset.Add(kvp.Key);
+                }
+            }
+
+            foreach (var key in keysToReset)
+            {
+                // Only reset scroll states (2=up, 3=down), not pressed state (1)
+                var wheelElement = _keyElements.FirstOrDefault(e => e.Element.Id == key);
+                if (wheelElement != null && _wheelStates.ContainsKey(key))
+                {
+                    var currentState = _wheelStates[key];
+                    bool isWheelPressed = (GetAsyncKeyState(VK_MBUTTON) & 0x8000) != 0;
+
+                    // Only reset scroll states (up/down), not press state
+                    if (currentState >= 2 && !isWheelPressed) // 2=up, 3=down
+                    {
+                        _wheelStates[key] = 0; // Reset to normal state
+                        _wheelScrollTimes.Remove(key);
+                        wheelElement.SetWheelState(0);
+                        System.Diagnostics.Debug.WriteLine($"Reset wheel state to NORMAL for {key}");
+                    }
+                    else if (currentState == 1 && !isWheelPressed) // 1=pressed
+                    {
+                        _wheelStates[key] = 0;
+                        _wheelScrollTimes.Remove(key);
+                        wheelElement.SetWheelState(0);
+                        System.Diagnostics.Debug.WriteLine($"Reset wheel pressed state to NORMAL for {key}");
                     }
                 }
             }
@@ -217,9 +563,9 @@ namespace InputOverlayUI
 
         private void OverlayWindow_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
         {
-            // Only start dragging if not near resize corners
+            // Only start dragging if not near resize areas
             var position = e.GetPosition(this);
-            if (!IsNearResizeCorner(position))
+            if (!IsNearResizeArea(position))
             {
                 _isDragging = true;
                 _dragStartPoint = position;
@@ -248,20 +594,21 @@ namespace InputOverlayUI
             }
         }
 
-        private bool IsNearResizeCorner(Point position)
+        private bool IsNearResizeArea(Point position)
         {
             var overlayBounds = GetOverlayContentBounds();
             if (overlayBounds == Rect.Empty) return false;
 
-            // Check if cursor is near any corner of the overlay content
+            // Check if cursor is near any resize area (corners or edges) of the overlay content
             bool nearLeft = position.X >= overlayBounds.Left - CornerSize && position.X <= overlayBounds.Left + CornerSize;
             bool nearRight = position.X >= overlayBounds.Right - CornerSize && position.X <= overlayBounds.Right + CornerSize;
             bool nearTop = position.Y >= overlayBounds.Top - CornerSize && position.Y <= overlayBounds.Top + CornerSize;
             bool nearBottom = position.Y >= overlayBounds.Bottom - CornerSize && position.Y <= overlayBounds.Bottom + CornerSize;
 
-            // Return true if near any corner
+            // Return true if near any corner or edge
             return (nearLeft && nearTop) || (nearRight && nearTop) ||
-                   (nearLeft && nearBottom) || (nearRight && nearBottom);
+                   (nearLeft && nearBottom) || (nearRight && nearBottom) ||
+                   nearLeft || nearRight || nearTop || nearBottom;
         }
 
         private void OverlayItem_PropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
@@ -283,17 +630,28 @@ namespace InputOverlayUI
             if (_hwndSource?.Handle != IntPtr.Zero && _hwndSource != null)
             {
                 IntPtr hwnd = _hwndSource.Handle;
-                if (_overlayItem.WindowPenetration)
+
+                // 对于鼠标覆盖层，强制禁用窗口穿透以确保能接收滚轮事件
+                if (_isMouseOverlay)
                 {
-                    // Enable click-through (transparent to mouse input)
+                    // 鼠标覆盖层永远不启用穿透，确保能接收所有鼠标事件
+                    uint extendedStyle = GetWindowLong(hwnd, GWL_EXSTYLE);
+                    SetWindowLong(hwnd, GWL_EXSTYLE, extendedStyle & ~WS_EX_TRANSPARENT);
+                    System.Diagnostics.Debug.WriteLine("Mouse overlay: click-through DISABLED to receive wheel events");
+                }
+                else if (_overlayItem.WindowPenetration)
+                {
+                    // 只有键盘覆盖层才启用穿透
                     uint extendedStyle = GetWindowLong(hwnd, GWL_EXSTYLE);
                     SetWindowLong(hwnd, GWL_EXSTYLE, extendedStyle | WS_EX_TRANSPARENT);
+                    System.Diagnostics.Debug.WriteLine("Keyboard overlay: click-through enabled");
                 }
                 else
                 {
-                    // Disable click-through (normal mouse input)
+                    // 普通模式，不穿透
                     uint extendedStyle = GetWindowLong(hwnd, GWL_EXSTYLE);
                     SetWindowLong(hwnd, GWL_EXSTYLE, extendedStyle & ~WS_EX_TRANSPARENT);
+                    System.Diagnostics.Debug.WriteLine("Normal overlay: click-through disabled");
                 }
             }
         }
@@ -331,6 +689,15 @@ namespace InputOverlayUI
                 case WM_NCHITTEST:
                     handled = true;
                     return HandleHitTest(lParam);
+
+                case WM_MOUSEWHEEL:
+                    if (_isMouseOverlay)
+                    {
+                        short delta = (short)((wParam.ToInt64() >> 16) & 0xFFFF);
+                        HandleMouseWheelMessage(delta);
+                        handled = true;
+                    }
+                    break;
             }
             return IntPtr.Zero;
         }
@@ -358,11 +725,17 @@ namespace InputOverlayUI
             bool nearTop = point.Y >= overlayBounds.Top - CornerSize && point.Y <= overlayBounds.Top + CornerSize;
             bool nearBottom = point.Y >= overlayBounds.Bottom - CornerSize && point.Y <= overlayBounds.Bottom + CornerSize;
 
-            // Check for corner resize areas
+            // Check for corner resize areas first (priority over edges)
             if (nearLeft && nearTop) return new IntPtr(HTTOPLEFT);
             if (nearRight && nearTop) return new IntPtr(HTTOPRIGHT);
             if (nearLeft && nearBottom) return new IntPtr(HTBOTTOMLEFT);
             if (nearRight && nearBottom) return new IntPtr(HTBOTTOMRIGHT);
+
+            // Check for edge resize areas
+            if (nearLeft) return new IntPtr(HTLEFT);
+            if (nearRight) return new IntPtr(HTRIGHT);
+            if (nearTop) return new IntPtr(HTTOP);
+            if (nearBottom) return new IntPtr(HTBOTTOM);
 
             // Default to client area (allows dragging)
             return new IntPtr(HTCLIENT);
@@ -393,6 +766,134 @@ namespace InputOverlayUI
             }
         }
 
+        private bool IsMouseButton(int vk)
+        {
+            return vk == VK_LBUTTON || vk == VK_RBUTTON || vk == VK_MBUTTON || vk == VK_XBUTTON1 || vk == VK_XBUTTON2;
+        }
+
+        private bool IsMouseElement(ElementInfo element)
+        {
+            // Check if element has mouse button codes
+            if (element.Codes.Hid.HasValue)
+            {
+                var hid = element.Codes.Hid.Value;
+                if (hid >= 1 && hid <= 5) // HID codes 1-5 are mouse buttons
+                    return true;
+            }
+
+            if (element.Codes.WinVk.HasValue)
+            {
+                var vk = element.Codes.WinVk.Value;
+                if (IsMouseButton(vk))
+                    return true;
+            }
+
+            // Check if element is a wheel
+            if (element.Wheel == true)
+                return true;
+
+            // Check if element has cursor info
+            if (element.Cursor != null && !string.IsNullOrEmpty(element.Cursor.Mode))
+                return true;
+
+            // Check if element ID suggests it's mouse-related
+            var id = element.Id.ToLower();
+            if (id.Contains("mouse") || id.Contains("lmb") || id.Contains("rmb") ||
+                id.Contains("wheel") || id.Contains("cursor") || id.Contains("xbutton"))
+                return true;
+
+            // Check if element has wheel-specific sprites (up/down states)
+            if (element.Sprite.Up != null || element.Sprite.Down != null)
+                return true;
+
+            return false;
+        }
+
+        private int HidToVirtualKey(int hidCode)
+        {
+            return hidCode switch
+            {
+                1 => VK_LBUTTON,    // Left mouse button
+                2 => VK_RBUTTON,    // Right mouse button
+                3 => VK_MBUTTON,    // Middle mouse button
+                4 => VK_XBUTTON2,   // X Button 2
+                5 => VK_XBUTTON1,   // X Button 1
+                6 => 0x43,          // C key
+                7 => 0x44,          // D key
+                22 => 0x53,         // S key
+                26 => 0x57,         // W key
+                // Add more keyboard mappings as needed
+                _ => 0
+            };
+        }
+
+        private void UpdateCursorElements(Point screenMousePos)
+        {
+            foreach (var cursorElement in _cursorElements)
+            {
+                cursorElement.UpdateForMousePosition(screenMousePos, this);
+            }
+        }
+
+        private void SetupMouseHook()
+        {
+            _mouseHookProc = MouseHookProc;
+            _mouseHook = SetWindowsHookEx(WH_MOUSE_LL, _mouseHookProc, GetModuleHandle(null!), 0);
+
+            if (_mouseHook == IntPtr.Zero)
+            {
+                System.Diagnostics.Debug.WriteLine("Failed to install mouse hook");
+            }
+            else
+            {
+                System.Diagnostics.Debug.WriteLine("Global mouse hook installed successfully");
+            }
+        }
+
+        private IntPtr MouseHookProc(int nCode, IntPtr wParam, IntPtr lParam)
+        {
+            if (nCode >= 0 && wParam.ToInt32() == WM_MOUSEWHEEL_HOOK)
+            {
+                try
+                {
+                    // Read the MSLLHOOKSTRUCT structure
+                    var hookStruct = Marshal.PtrToStructure<MSLLHOOKSTRUCT>(lParam);
+                    var delta = (short)((hookStruct.mouseData >> 16) & 0xFFFF);
+
+                    // Convert unsigned to signed
+                    if (delta > 32767)
+                        delta = (short)(delta - 65536);
+
+                    System.Diagnostics.Debug.WriteLine($"Global mouse hook: wheel delta={delta} at position ({hookStruct.pt.X}, {hookStruct.pt.Y})");
+
+                    // Use Dispatcher to update UI on main thread (non-blocking)
+                    Dispatcher.BeginInvoke(new Action(() => {
+                        if (_isMouseOverlay && IsVisible && WindowState != WindowState.Minimized)
+                        {
+                            System.Diagnostics.Debug.WriteLine($"Processing global wheel event: delta={delta}");
+                            HandleMouseWheelMessage(delta);
+                        }
+                    }));
+                }
+                catch (Exception ex)
+                {
+                    // Ignore errors in hook to prevent system instability
+                    System.Diagnostics.Debug.WriteLine($"Mouse hook error: {ex.Message}");
+                }
+            }
+
+            return CallNextHookEx(_mouseHook, nCode, wParam, lParam);
+        }
+
+        private void RemoveMouseHook()
+        {
+            if (_mouseHook != IntPtr.Zero)
+            {
+                UnhookWindowsHookEx(_mouseHook);
+                _mouseHook = IntPtr.Zero;
+            }
+        }
+
         protected override void OnClosed(EventArgs e)
         {
             // Unsubscribe from events
@@ -407,6 +908,9 @@ namespace InputOverlayUI
             // Remove window message hook
             _hwndSource?.RemoveHook(WndProc);
             _hwndSource = null;
+
+            // Remove mouse hook
+            RemoveMouseHook();
 
             _inputTimer?.Stop();
             base.OnClosed(e);
@@ -462,6 +966,119 @@ namespace InputOverlayUI
                     Element.Sprite.Normal[0], Element.Sprite.Normal[1],
                     Element.Sprite.Normal[2], Element.Sprite.Normal[3]));
             }
+
+            _imageControl.Source = croppedBitmap;
+            _imageControl.Width = Element.Sprite.Normal[2];
+            _imageControl.Height = Element.Sprite.Normal[3];
+        }
+
+        public void SetWheelState(int state)
+        {
+            if (_imageControl == null) return;
+
+            CroppedBitmap croppedBitmap;
+            int[] spriteRect;
+
+            switch (state)
+            {
+                case 1: // Pressed
+                    spriteRect = Element.Sprite.Pressed ?? Element.Sprite.Normal;
+                    break;
+                case 2: // Scroll up
+                    spriteRect = Element.Sprite.Up ?? Element.Sprite.Normal;
+                    break;
+                case 3: // Scroll down
+                    spriteRect = Element.Sprite.Down ?? Element.Sprite.Normal;
+                    break;
+                default: // Normal
+                    spriteRect = Element.Sprite.Normal;
+                    break;
+            }
+
+            croppedBitmap = new CroppedBitmap(_sourceImage, new Int32Rect(
+                spriteRect[0], spriteRect[1], spriteRect[2], spriteRect[3]));
+
+            _imageControl.Source = croppedBitmap;
+            _imageControl.Width = spriteRect[2];
+            _imageControl.Height = spriteRect[3];
+        }
+    }
+
+    internal class CursorElement
+    {
+        public ElementInfo Element { get; }
+        private BitmapImage _sourceImage;
+        private DefaultsInfo _defaults;
+        private Image? _imageControl;
+        private Vector _previousMovement = new Vector(0, 0);
+        private DateTime _lastMovementTime = DateTime.Now;
+
+        public CursorElement(ElementInfo element, BitmapImage sourceImage, DefaultsInfo defaults)
+        {
+            Element = element;
+            _sourceImage = sourceImage;
+            _defaults = defaults;
+        }
+
+        public Image CreateImageControl()
+        {
+            _imageControl = new Image();
+            UpdateSprite(); // Start with normal state
+            return _imageControl;
+        }
+
+        public void UpdateForMousePosition(Point screenMousePos, Window window)
+        {
+            if (_imageControl == null || Element.Cursor == null) return;
+
+            // Convert screen position to window coordinates
+            var windowPos = window.PointFromScreen(screenMousePos);
+
+            if (Element.Cursor.Mode == "arrow")
+            {
+                // Arrow mode - update based on movement direction
+                var currentTime = DateTime.Now;
+                var deltaTime = (currentTime - _lastMovementTime).TotalMilliseconds;
+
+                if (deltaTime > 100) // Reset if no movement for 100ms
+                {
+                    _previousMovement = new Vector(0, 0);
+                    UpdateSprite();
+                }
+            }
+            else if (Element.Cursor.Mode == "dot")
+            {
+                // Dot mode - show if mouse is within radius
+                var overlayContentPos = new Point(Element.Position[0], Element.Position[1]);
+                var distance = (windowPos - overlayContentPos).Length;
+
+                if (distance <= (Element.Cursor.Radius ?? 50))
+                {
+                    // Mouse is within range, update position
+                    var canvas = _imageControl.Parent as Canvas;
+                    if (canvas != null)
+                    {
+                        // Offset the cursor position to center it on the mouse
+                        Canvas.SetLeft(_imageControl, windowPos.X - Element.Sprite.Normal[2] / 2);
+                        Canvas.SetTop(_imageControl, windowPos.Y - Element.Sprite.Normal[3] / 2);
+                        _imageControl.Visibility = Visibility.Visible;
+                    }
+                }
+                else
+                {
+                    _imageControl.Visibility = Visibility.Hidden;
+                }
+            }
+        }
+
+        private void UpdateSprite()
+        {
+            if (_imageControl == null) return;
+
+            // Use normal sprite for now - could be enhanced to show different directions
+            var croppedBitmap = new CroppedBitmap(_sourceImage, new Int32Rect(
+                Element.Sprite.Normal[0], Element.Sprite.Normal[1],
+                Element.Sprite.Normal[2], Element.Sprite.Normal[3]));
 
             _imageControl.Source = croppedBitmap;
             _imageControl.Width = Element.Sprite.Normal[2];

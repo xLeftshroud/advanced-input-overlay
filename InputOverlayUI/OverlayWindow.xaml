@@ -10,7 +10,7 @@
         ResizeMode="CanResize"
         Left="100" Top="100"
         Width="705" Height="394"
-        MinWidth="100" MinHeight="100">
+        MinWidth="20" MinHeight="20">
 
     <Viewbox x:Name="OverlayViewbox" Stretch="Uniform">
         <Border x:Name="OverlayBorder" Background="Transparent">
