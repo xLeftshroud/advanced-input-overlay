@@ -15,6 +15,8 @@ public:
     bool IsKeyPressed(const InputKey& key);
     bool IsMouseButtonPressed(int button);
     Vector2i GetMousePosition();
+    Vector2i GetMouseMovement();
+    int GetMouseWheelDelta();
     void Cleanup(); // Add missing cleanup method
 
 private:
@@ -28,6 +30,10 @@ private:
     std::map<int, bool> m_keyStates;
     std::map<int, bool> m_previousKeyStates;
     Vector2i m_mousePosition;
+    Vector2i m_previousMousePosition;
+    Vector2i m_mouseMovement;
+    int m_mouseWheelDelta;
+    int m_previousWheelDelta;
 
     // Private methods
     bool InitializeDirectInput();

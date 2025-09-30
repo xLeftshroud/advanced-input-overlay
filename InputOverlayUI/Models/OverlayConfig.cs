@@ -61,6 +61,12 @@ namespace InputOverlayUI.Models
 
         [JsonProperty("z")]
         public int? Z { get; set; }
+
+        [JsonProperty("wheel")]
+        public bool? Wheel { get; set; }
+
+        [JsonProperty("cursor")]
+        public CursorInfo? Cursor { get; set; }
     }
 
     public class CodesInfo
@@ -82,5 +88,77 @@ namespace InputOverlayUI.Models
 
         [JsonProperty("pressed")]
         public int[]? Pressed { get; set; }
+
+        [JsonProperty("up")]
+        public int[]? Up { get; set; }
+
+        [JsonProperty("down")]
+        public int[]? Down { get; set; }
+
+        [JsonProperty("left")]
+        public int[]? Left { get; set; }
+
+        [JsonProperty("right")]
+        public int[]? Right { get; set; }
+
+        [JsonProperty("up_left")]
+        public int[]? UpLeft { get; set; }
+
+        [JsonProperty("up_right")]
+        public int[]? UpRight { get; set; }
+
+        [JsonProperty("down_left")]
+        public int[]? DownLeft { get; set; }
+
+        [JsonProperty("down_right")]
+        public int[]? DownRight { get; set; }
+    }
+
+    public class CursorInfo
+    {
+        [JsonProperty("mode")]
+        public string Mode { get; set; } = "";
+
+        [JsonProperty("radius")]
+        public int? Radius { get; set; }
+
+        [JsonProperty("sensitivity")]
+        public double? Sensitivity { get; set; }
+
+        [JsonProperty("use_monitor_center")]
+        public bool? UseMonitorCenter { get; set; }
+
+        [JsonProperty("monitor_center_x")]
+        public int? MonitorCenterX { get; set; }
+
+        [JsonProperty("monitor_center_y")]
+        public int? MonitorCenterY { get; set; }
+    }
+
+    public class MouseEventData
+    {
+        [JsonProperty("position")]
+        public int[] Position { get; set; } = new int[2];
+
+        [JsonProperty("movement")]
+        public int[] Movement { get; set; } = new int[2];
+
+        [JsonProperty("wheelDelta")]
+        public int WheelDelta { get; set; }
+
+        [JsonProperty("leftButton")]
+        public bool LeftButton { get; set; }
+
+        [JsonProperty("rightButton")]
+        public bool RightButton { get; set; }
+
+        [JsonProperty("middleButton")]
+        public bool MiddleButton { get; set; }
+
+        [JsonProperty("xButton1")]
+        public bool XButton1 { get; set; }
+
+        [JsonProperty("xButton2")]
+        public bool XButton2 { get; set; }
     }
 }

@@ -35,6 +35,7 @@ private:
     bool ParseElement(const std::string& elementJson, OverlayElement& element);
     bool ParseCodes(const std::string& codesJson, InputKey& key);
     bool ParseSprite(const std::string& spriteJson, SpriteInfo& sprite, const Vector2i& defaultOffset);
+    bool ParseCursor(const std::string& cursorJson, CursorInfo& cursor);
 
     // JSON generation helpers
     std::string IntArrayToJSON(const std::vector<int>& arr);
