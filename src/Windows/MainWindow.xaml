@@ -1,0 +1,183 @@
+<Window x:Class="AdvancedInputOverlay.Windows.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:vm="clr-namespace:AdvancedInputOverlay.ViewModels"
+        mc:Ignorable="d"
+        Title="Advanced Input Overlay"
+        Width="780" Height="500" MinWidth="640" MinHeight="320"
+        WindowStartupLocation="CenterScreen"
+        Background="#F7F8FA"
+        PreviewMouseMove="OnPreviewMouseMove"
+        PreviewMouseLeftButtonUp="OnPreviewMouseLeftButtonUp">
+
+    <Window.Resources>
+        <Style x:Key="RowBorderStyle" TargetType="Border">
+            <Setter Property="BorderBrush" Value="#9CA3AF"/>
+            <Setter Property="BorderThickness" Value="0,0,0,1.5"/>
+            <Setter Property="Background" Value="White"/>
+            <Setter Property="Padding" Value="8,8"/>
+        </Style>
+    </Window.Resources>
+
+    <Grid Margin="20">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+
+        <!-- Header: title + Add button -->
+        <Grid Grid.Row="0" Margin="0,0,0,12">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="Auto"/>
+            </Grid.ColumnDefinitions>
+            <TextBlock Grid.Column="0"
+                       Text="Advanced Input Overlay"
+                       FontSize="18" FontWeight="SemiBold"
+                       VerticalAlignment="Center"
+                       Foreground="#222"/>
+            <Button Grid.Column="1"
+                    Style="{StaticResource AddButtonStyle}"
+                    Content="+"
+                    ToolTip="Add overlay"
+                    Command="{Binding AddCommand}"/>
+        </Grid>
+
+        <!-- Overlay list -->
+        <Border Grid.Row="1"
+                BorderBrush="#D1D5DB"
+                BorderThickness="1"
+                CornerRadius="6"
+                Background="White"
+                ClipToBounds="True">
+            <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                <ItemsControl x:Name="OverlayList" ItemsSource="{Binding Overlays}">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate DataType="{x:Type vm:OverlayRowViewModel}">
+                            <Border RenderTransformOrigin="0.5,0.5">
+                                <Border.RenderTransform>
+                                    <TranslateTransform Y="0"/>
+                                </Border.RenderTransform>
+                                <Border.Style>
+                                    <Style TargetType="Border" BasedOn="{StaticResource RowBorderStyle}">
+                                        <Setter Property="Opacity" Value="1"/>
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding IsDragging}" Value="True">
+                                                <Setter Property="Background" Value="#E0EBFF"/>
+                                                <Setter Property="Effect">
+                                                    <Setter.Value>
+                                                        <DropShadowEffect Color="#1F2937" BlurRadius="14" ShadowDepth="3" Opacity="0.22"/>
+                                                    </Setter.Value>
+                                                </Setter>
+                                                <DataTrigger.EnterActions>
+                                                    <BeginStoryboard>
+                                                        <Storyboard>
+                                                            <DoubleAnimation Storyboard.TargetProperty="Opacity"
+                                                                             To="0.85" Duration="0:0:0.12"/>
+                                                            <DoubleAnimation Storyboard.TargetProperty="(UIElement.RenderTransform).(TranslateTransform.Y)"
+                                                                             To="-2" Duration="0:0:0.12"/>
+                                                        </Storyboard>
+                                                    </BeginStoryboard>
+                                                </DataTrigger.EnterActions>
+                                                <DataTrigger.ExitActions>
+                                                    <BeginStoryboard>
+                                                        <Storyboard>
+                                                            <DoubleAnimation Storyboard.TargetProperty="Opacity"
+                                                                             To="1.0" Duration="0:0:0.12"/>
+                                                            <DoubleAnimation Storyboard.TargetProperty="(UIElement.RenderTransform).(TranslateTransform.Y)"
+                                                                             To="0" Duration="0:0:0.12"/>
+                                                        </Storyboard>
+                                                    </BeginStoryboard>
+                                                </DataTrigger.ExitActions>
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </Border.Style>
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="36"/>   <!-- index -->
+                                        <ColumnDefinition Width="*"/>    <!-- name -->
+                                        <ColumnDefinition Width="Auto"/> <!-- S -->
+                                        <ColumnDefinition Width="Auto"/> <!-- W -->
+                                        <ColumnDefinition Width="Auto"/> <!-- T -->
+                                        <ColumnDefinition Width="Auto"/> <!-- P -->
+                                        <ColumnDefinition Width="12"/>
+                                        <ColumnDefinition Width="Auto"/> <!-- Edit -->
+                                        <ColumnDefinition Width="Auto"/> <!-- Delete -->
+                                        <ColumnDefinition Width="12"/>
+                                        <ColumnDefinition Width="Auto"/> <!-- Drag handle -->
+                                    </Grid.ColumnDefinitions>
+
+                                    <TextBlock Grid.Column="0"
+                                               Text="{Binding Index}"
+                                               Foreground="#999"
+                                               VerticalAlignment="Center"
+                                               HorizontalAlignment="Center"/>
+
+                                    <TextBlock Grid.Column="1"
+                                               Text="{Binding Name}"
+                                               VerticalAlignment="Center"
+                                               Margin="6,0,12,0"
+                                               TextTrimming="CharacterEllipsis"
+                                               Foreground="#222"/>
+
+                                    <ToggleButton Grid.Column="2"
+                                                  Style="{StaticResource CircularToggleStyle}"
+                                                  Content="S"
+                                                  ToolTip="Show / Hide"
+                                                  IsChecked="{Binding Visible, Mode=TwoWay}"/>
+                                    <ToggleButton Grid.Column="3"
+                                                  Style="{StaticResource CircularToggleStyle}"
+                                                  Content="W"
+                                                  ToolTip="Window mode (title bar + resize)"
+                                                  IsChecked="{Binding WindowMode, Mode=TwoWay}"/>
+                                    <ToggleButton Grid.Column="4"
+                                                  Style="{StaticResource CircularToggleStyle}"
+                                                  Content="T"
+                                                  ToolTip="Always on top"
+                                                  IsChecked="{Binding Topmost, Mode=TwoWay}"/>
+                                    <ToggleButton Grid.Column="5"
+                                                  Style="{StaticResource CircularToggleStyle}"
+                                                  Content="P"
+                                                  ToolTip="Click-through (pass mouse to window below)"
+                                                  IsChecked="{Binding ClickThrough, Mode=TwoWay}"/>
+
+                                    <Button Grid.Column="7"
+                                            Style="{StaticResource CircularButtonStyle}"
+                                            ToolTip="Edit"
+                                            Command="{Binding DataContext.EditCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                                            CommandParameter="{Binding}">
+                                        <TextBlock Text="&#xE70F;"/>  <!-- Edit (pencil) glyph -->
+                                    </Button>
+                                    <Button Grid.Column="8"
+                                            Style="{StaticResource CircularButtonStyle}"
+                                            ToolTip="Delete"
+                                            Command="{Binding DataContext.DeleteCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                                            CommandParameter="{Binding}">
+                                        <TextBlock Text="&#xE74D;"/>  <!-- Delete (trash) glyph -->
+                                    </Button>
+
+                                    <!-- Drag handle: 3 horizontal lines. Mouse-down begins a live reorder. -->
+                                    <Grid Grid.Column="10"
+                                          Width="22" Height="28"
+                                          Background="Transparent"
+                                          Cursor="SizeNS"
+                                          ToolTip="Drag to reorder"
+                                          MouseLeftButtonDown="OnDragHandleDown">
+                                        <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center">
+                                            <Rectangle Width="14" Height="2" Fill="#999" Margin="0,2"/>
+                                            <Rectangle Width="14" Height="2" Fill="#999" Margin="0,2"/>
+                                            <Rectangle Width="14" Height="2" Fill="#999" Margin="0,2"/>
+                                        </StackPanel>
+                                    </Grid>
+                                </Grid>
+                            </Border>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </ScrollViewer>
+        </Border>
+    </Grid>
+</Window>

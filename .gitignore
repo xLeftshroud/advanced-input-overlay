@@ -1,0 +1,117 @@
+# =========================================
+# .NET / Visual Studio / WPF build artifacts
+# =========================================
+
+# Build output
+[Bb]in/
+[Oo]bj/
+[Oo]ut/
+[Dd]ebug/
+[Dd]ebugPublic/
+[Rr]elease/
+[Rr]eleases/
+x64/
+x86/
+[Aa][Rr][Mm]/
+[Aa][Rr][Mm]64/
+bld/
+[Bb]uild/
+[Ll]og/
+[Ll]ogs/
+
+# Publish output (single-file portable exe + .pdb)
+publish/
+[Pp]ublishProfiles/
+*.[Pp]ublish.xml
+
+# Visual Studio cache / state
+.vs/
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+*.userprefs
+
+# Rider / IntelliJ
+.idea/
+*.iml
+
+# VS Code
+.vscode/
+
+# ReSharper
+_ReSharper*/
+*.[Rr]e[Ss]harper
+*.DotSettings.user
+
+# JetBrains dotCover / dotTrace
+*.dotCover
+*.dotTrace
+
+# NuGet
+*.nupkg
+*.snupkg
+.nuget/
+**/[Pp]ackages/*
+!**/[Pp]ackages/build/
+project.lock.json
+project.fragment.lock.json
+artifacts/
+
+# Roslyn / IDE
+*.cache
+*.VC.db
+*.VC.opendb
+*.aps
+*.pidb
+*.svclog
+*.scc
+*.psess
+*.vsp
+*.vspx
+*.sap
+
+# MSBuild
+*.tlog
+*.log
+*.binlog
+
+# Test results
+[Tt]est[Rr]esult*/
+[Bb]uild[Ll]og.*
+*.coverage
+*.coveragexml
+TestResult.xml
+
+# Code analysis
+StyleCopReport.xml
+*.gpState
+
+# =========================================
+# Runtime / app-generated state
+# =========================================
+
+# Settings written next to the exe at runtime
+config.json
+config.json.tmp
+
+# =========================================
+# OS-generated files
+# =========================================
+
+Thumbs.db
+ehthumbs.db
+ehthumbs_vista.db
+Desktop.ini
+$RECYCLE.BIN/
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# =========================================
+# Misc
+# =========================================
+
+*.bak
+*.swp
+*~
