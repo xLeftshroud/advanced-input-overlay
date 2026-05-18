@@ -39,6 +39,26 @@ A bundled minimal sample at `samples/wasd-minimal.json` pairs with the WASD spri
 
 Press **Q W E LShift A S D LCtrl Space** and watch the keys light up.
 
+## Convert OBS presets
+
+If you already have layouts in the OBS input-overlay schema — from [obs-input-overlay/presets](https://github.com/univrsal/input-overlay/tree/master/presets) or any other source — the bundled converter translates them to AIO's simpler format. Run it from a PowerShell prompt:
+
+```powershell
+cd advanced-input-overlay
+pwsh -File tools/Convert-ObsLayout.ps1
+    -InputPath  "path\to\obs\preset.json"
+    -OutputPath "path\to\output\preset.json"
+```
+
+What the converter does:
+
+- **Translates** uiohook scan codes (`17`) to AIO key names (`"W"`), and mouse button numbers (`1`-`5`) to `"MouseLeft"` / `"MouseRight"` / `"MouseMiddle"` / `"MouseSide1"` / `"MouseSide2"`.
+- **Reshapes** OBS's `mapping: [x, y, w, h]` and `pos: [x, y]` arrays into AIO's `src: {x,y,w,h}` and `pos: {x,y}` objects.
+- **Skips** element types not in v1 (mouse wheel, mouse movement dot, gamepad family) and prints a warning per skipped element to stderr.
+- **Drops** OBS-only fields (`id`, `z_level`, `default_*`, `flags`, `space_*`, `version`) that AIO does not consume.
+
+Output is UTF-8 (no BOM) and is ready to load via **Add Overlay → Browse... → Overlay config (json)** alongside the original PNG.
+
 ## Layout JSON schema
 
 ```json
@@ -161,6 +181,8 @@ advanced-input-overlay/
 ├── AdvancedInputOverlay.sln
 ├── samples/
 │   └── wasd-minimal.json                ← example layout pairing with obs-input-overlay-preset/wasd/wasd.png
+├── tools/
+│   └── Convert-ObsLayout.ps1            ← OBS input-overlay JSON → AIO JSON converter
 └── src/
     ├── AdvancedInputOverlay.csproj      ← net8.0-windows, UseWPF, UseWindowsForms, SelfContained, PublishSingleFile
     ├── App.xaml(.cs)                    ← startup, tray, single-instance Mutex, global hook subscription
