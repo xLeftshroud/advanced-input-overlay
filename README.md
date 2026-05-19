@@ -20,8 +20,8 @@ Built for stream / tutorial / preset-demo use: import any compatible PNG (e.g. f
 
 ## Quick start
 
-1. Download `AdvancedInputOverlay.exe` (single file, ~72 MB self-contained).
-2. Double-click to run. The main window opens.
+1. Download the latest **AdvancedInputOverlay-v\*.\*.\*.zip** from the [Releases page](https://github.com/xLeftshroud/advanced-input-overlay/releases/latest) and extract it anywhere.
+2. Double-click `AdvancedInputOverlay.exe`. The main window opens.
 3. Click **`+`** in the top-right → fill in the form:
    - **Name** — anything memorable
    - **Overlay image** — path to a sprite-sheet PNG (Browse...)
@@ -174,15 +174,41 @@ dotnet publish src/AdvancedInputOverlay.csproj -c Release -r win-x64 --self-cont
 
 The published `publish/AdvancedInputOverlay.exe` runs on any Win10 / Win11 x64 machine — no install, no .NET dependency.
 
+## Releasing
+
+For maintainers — how to cut a versioned release zip and publish it to GitHub.
+
+```pwsh
+# 1. Build the release zip (from repo root)
+.\scripts\Build-Release.ps1 -Version 1.0.0
+# → dist/AdvancedInputOverlay-v1.0.0.zip
+
+# 2. Tag the commit and push the tag
+git tag -a v1.0.0 -m "Release v1.0.0"
+git push origin v1.0.0
+
+# 3. Open https://github.com/xLeftshroud/advanced-input-overlay/releases/new
+#    - Choose tag: v1.0.0
+#    - Title:      v1.0.0
+#    - Description: changelog / highlights
+#    - Attach:     dist/AdvancedInputOverlay-v1.0.0.zip
+#    - Publish release
+```
+
+The release zip contains the exe, README, LICENSE, `samples/`, and `tools/`. Source code, build intermediates, and the runtime-generated `config.json` are excluded.
+
 ## Project layout
 
 ```
 advanced-input-overlay/
 ├── AdvancedInputOverlay.sln
 ├── samples/
-│   └── wasd-minimal.json                ← example layout pairing with obs-input-overlay-preset/wasd/wasd.png
+│   ├── wasd-minimal.json                ← example layout pairing with obs-input-overlay-preset/wasd/wasd.png
+│   └── wasd-full.json, mouse-no-movement.json, *.png
 ├── tools/
-│   └── Convert-ObsLayout.ps1            ← OBS input-overlay JSON → AIO JSON converter
+│   └── Convert-ObsLayout.ps1            ← OBS input-overlay JSON → AIO JSON converter (shipped)
+├── scripts/
+│   └── Build-Release.ps1                ← maintainer-only release packager
 └── src/
     ├── AdvancedInputOverlay.csproj      ← net8.0-windows, UseWPF, UseWindowsForms, SelfContained, PublishSingleFile
     ├── App.xaml(.cs)                    ← startup, tray, single-instance Mutex, global hook subscription
