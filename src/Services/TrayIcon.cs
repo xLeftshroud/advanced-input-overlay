@@ -14,6 +14,7 @@ public sealed class TrayIcon : IDisposable
     private readonly NotifyIcon _icon;
     private readonly Action _onShow;
     private readonly Action _onExit;
+    private Icon? _appIcon;
     private bool _disposed;
 
     public TrayIcon(string tooltip, Action onShow, Action onExit)
@@ -24,7 +25,7 @@ public sealed class TrayIcon : IDisposable
         _icon = new NotifyIcon
         {
             Text = tooltip,
-            Icon = SystemIcons.Application,  // TODO M11: bundle a real .ico
+            Icon = LoadAppIcon(),
             Visible = true,
         };
 
@@ -37,6 +38,31 @@ public sealed class TrayIcon : IDisposable
         _icon.DoubleClick += (_, _) => _onShow();
     }
 
+    /// <summary>
+    /// Load the app icon embedded as a WPF resource (Resources/app.ico). Falls back
+    /// to the system Application icon if the resource lookup fails — shouldn't happen
+    /// in a normally built exe, but keeps the tray usable in dev / partial builds.
+    /// </summary>
+    private Icon LoadAppIcon()
+    {
+        try
+        {
+            var uri = new Uri("pack://application:,,,/Resources/app.ico", UriKind.Absolute);
+            var info = Application.GetResourceStream(uri);
+            if (info != null)
+            {
+                using var stream = info.Stream;
+                _appIcon = new Icon(stream);
+                return _appIcon;
+            }
+        }
+        catch
+        {
+            // fall through to default
+        }
+        return SystemIcons.Application;
+    }
+
     public void Dispose()
     {
         if (_disposed) return;
@@ -44,5 +70,6 @@ public sealed class TrayIcon : IDisposable
         _icon.Visible = false;
         _icon.ContextMenuStrip?.Dispose();
         _icon.Dispose();
+        _appIcon?.Dispose();
     }
 }

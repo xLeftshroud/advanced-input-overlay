@@ -6,6 +6,7 @@
         xmlns:vm="clr-namespace:AdvancedInputOverlay.ViewModels"
         mc:Ignorable="d"
         Title="Advanced Input Overlay"
+        Icon="/Resources/app.ico"
         Width="780" Height="500" MinWidth="640" MinHeight="320"
         WindowStartupLocation="CenterScreen"
         Background="#F7F8FA"

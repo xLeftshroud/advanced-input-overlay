@@ -10,7 +10,14 @@
     <RootNamespace>AdvancedInputOverlay</RootNamespace>
     <AssemblyName>AdvancedInputOverlay</AssemblyName>
     <LangVersion>latest</LangVersion>
+    <ApplicationIcon>Resources\app.ico</ApplicationIcon>
   </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Also embedded as a WPF resource so we can load it via pack URI for
+         Window.Icon (XAML) and the NotifyIcon tray icon. -->
+    <Resource Include="Resources\app.ico" />
+  </ItemGroup>
 
   <PropertyGroup Label="Publish settings (only take effect with `dotnet publish`)">
     <RuntimeIdentifier>win-x64</RuntimeIdentifier>
