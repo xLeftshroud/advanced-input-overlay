@@ -24,6 +24,9 @@ publish/
 [Pp]ublishProfiles/
 *.[Pp]ublish.xml
 
+# Release packaging output (zip + staging folder produced by scripts/Build-Release.ps1)
+dist/
+
 # Visual Studio cache / state
 .vs/
 *.suo
